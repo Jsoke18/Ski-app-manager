@@ -31,15 +31,36 @@ export const addResort = async (formData) => {
     throw error;
   }
 };
-export const updateResort = async (updatedResort) => {
-    try {
-      const response = await axios.put(`${API_BASE_URL}/resorts/${updatedResort._id}`, updatedResort);
-      return response.data;
-    } catch (error) {
-      console.error('Error updating resort:', error);
-      throw error;
+
+export const updateResort = async (formData) => {
+  try {
+    console.log('geoJSONFile:', formData.get('geoJSONFile'));
+    // Print the form data
+    console.log('Form Data:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}: ${value}`);
     }
-  };
+    const resortId = formData.get('_id');
+    const response = await axios.put(`${API_BASE_URL}/resorts/${resortId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response;
+  } catch (error) {
+    console.error('Error updating resort:', error);
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+      console.error('Response headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('Request:', error.request);
+    } else {
+      console.error('Error message:', error.message);
+    }
+    throw error;
+  }
+};
 
   export const deleteResort = async (resortId) => {
     try {

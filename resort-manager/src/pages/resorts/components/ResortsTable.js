@@ -14,7 +14,23 @@ const ResortTable = ({ data, setData }) => {
   const [modalVisible, setModalVisible] = useState(false);
 
   const columns = [
-    { title: "Resort Name", dataIndex: "name", key: "name" },
+    {
+      title: "Resort",
+      dataIndex: "name",
+      key: "name",
+      render: (text, record) => (
+        <div style={{ display: "flex", alignItems: "center" }}>
+          {record.imageUrl && (
+            <img
+              src={record.imageUrl}
+              alt={record.name}
+              style={{ width: 50, height: 50, marginRight: 8, objectFit: "cover" }}
+            />
+          )}
+          <span>{text}</span>
+        </div>
+      ),
+    },
     {
       title: "Location",
       dataIndex: "location",
@@ -26,15 +42,26 @@ const ResortTable = ({ data, setData }) => {
     },
     { title: "Country", dataIndex: "country", key: "country" },
     { title: "Province", dataIndex: "province", key: "province" },
+    { title: "Skiable Terrain", dataIndex: "skiable_terrain", key: "skiable_terrain" },
     { title: "Longest Run", dataIndex: "longestRun", key: "longestRun" },
+    {
+      title: "Runs",
+      dataIndex: "runs",
+      key: "runs",
+      render: (runs) => `${runs.open || 0} / ${runs.total || 0}`,
+    },
     {
       title: "Base Elevation",
       dataIndex: "baseElevation",
       key: "baseElevation",
     },
     { title: "Top Elevation", dataIndex: "topElevation", key: "topElevation" },
-    { title: "Total Lifts", dataIndex: "totalLifts", key: "totalLifts" },
-
+    {
+      title: 'Lifts',
+      dataIndex: 'lifts',
+      key: 'lifts',
+      render: (lifts) => `${lifts.open || 0} / ${lifts.total || 0}`,
+    },
     {
       title: "Actions",
       key: "actions",
@@ -94,26 +121,30 @@ const ResortTable = ({ data, setData }) => {
     }
   };
 
-const handleUpdateResort = async (updatedResort) => {
-  try {
-    const response = await updateResort(updatedResort);
-    console.log("Updated resort:", response);
-    // Update the data source with the updated resort
-    const updatedData = data.map((resort) =>
-      resort._id === response.data._id ? response.data : resort
-    );
-    setData(updatedData);
-    handleCloseModal();
-    message.success("Resort updated successfully");
-  } catch (error) {
-    console.error("Error updating resort:", error);
-    if (error.response && error.response.data && error.response.data.error) {
-      message.error(error.response.data.error);
-    } else {
-      message.error("An error occurred while updating the resort");
+  const handleUpdateResort = async (updatedResort) => {
+    try {
+      const response = await updateResort(updatedResort);
+      console.log("Updated resort:", response);
+      if (response && response.data) {
+        // Update the data source with the updated resort
+        const updatedData = data.map((resort) =>
+          resort._id === response.data._id ? response.data : resort
+        );
+        setData(updatedData);
+        handleCloseModal();
+        message.success("Resort updated successfully");
+      } else {
+        message.error("Failed to update resort");
+      }
+    } catch (error) {
+      console.error("Error updating resort:", error);
+      if (error.response && error.response.data && error.response.data.error) {
+        message.error(error.response.data.error);
+      } else {
+        message.error("An error occurred while updating the resort");
+      }
     }
-  }
-};
+  };
 
   const handleEditResort = (resort) => {
     setEditingResort(resort);

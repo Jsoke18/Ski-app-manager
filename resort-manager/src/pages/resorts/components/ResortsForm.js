@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Button, Upload } from 'antd';
+import { Form, Input, Button, Upload, Select, InputNumber } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
 
 const { Dragger } = Upload;
+const { Option } = Select;
 
 const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
   const [form] = Form.useForm();
@@ -10,7 +11,17 @@ const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
 
   useEffect(() => {
     if (editingResort) {
-      form.setFieldsValue(editingResort);
+      form.setFieldsValue({
+        ...editingResort,
+        runs: {
+          open: editingResort.runs?.open || null,
+          total: editingResort.runs?.total || 0,
+        },
+        lifts: {
+          open: editingResort.lifts?.open || null,
+          total: editingResort.lifts?.total || 0,
+        },
+      });
     } else {
       form.resetFields();
     }
@@ -21,19 +32,48 @@ const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
     const formData = new FormData();
     formData.append('name', values.name);
     formData.append('province', values.province);
+    formData.append('country', values.country);
     formData.append('information', values.information);
     formData.append('longestRun', values.longestRun);
     formData.append('baseElevation', values.baseElevation);
     formData.append('topElevation', values.topElevation);
-    formData.append('totalLifts', values.totalLifts);
     formData.append('notes', values.notes);
-    formData.append('image', values.image);
+    formData.append('runs', JSON.stringify(values.runs));
+    formData.append('terrainParks', values.terrainParks);
+    formData.append('lifts', JSON.stringify(values.lifts));
+    formData.append('gondolas', values.gondolas);
+    formData.append('imageUrl', values.imageUrl);
+    formData.append('skiable_terrain', values.skiable_terrain);
+    formData.append('snowCats', values.snowCats);
+    formData.append('helicopters', values.helicopters);
+    
     if (geoJSONFile) {
       formData.append('geoJSONFile', geoJSONFile);
     }
+    
+    // Add location data to the formData
+    if (editingResort && editingResort.location) {
+      if (values.coordinates) {
+        // Update the coordinates if provided in the form
+        const updatedLocation = {
+          ...editingResort.location,
+          coordinates: values.coordinates.split(',').map(coord => parseFloat(coord.trim())),
+        };
+        formData.append('location', JSON.stringify(updatedLocation));
+      } else {
+        // Use the existing location data if coordinates are not provided
+        formData.append('location', JSON.stringify(editingResort.location));
+      }
+    } else if (values.locationType && values.coordinates) {
+      // Create a new location object if locationType and coordinates are provided
+      formData.append('location', JSON.stringify({
+        type: values.locationType,
+        coordinates: values.coordinates.split(',').map(coord => parseFloat(coord.trim())),
+      }));
+    }
   
     if (editingResort) {
-      formData.append('_id', editingResort._id); // Pass the resort ID when updating
+      formData.append('_id', editingResort._id);
       onUpdateResort(formData);
     } else {
       onUpdateResort(formData);
@@ -49,7 +89,7 @@ const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
     accept: '.geojson',
     beforeUpload: (file) => {
       setGeoJSONFile(file);
-      return false; // Do not upload the file immediately
+      return false;
     },
     onRemove: () => {
       setGeoJSONFile(null);
@@ -61,8 +101,20 @@ const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
       <Form.Item name="name" label="Resort Name" rules={[{ required: true }]}>
         <Input />
       </Form.Item>
+      <Form.Item name="country" label="Country">
+        <Input />
+      </Form.Item>
       <Form.Item name="province" label="Province">
         <Input />
+      </Form.Item>
+      <Form.Item name="locationType" label="Location Type">
+        <Select>
+          <Option value="Point">Point</Option>
+          <Option value="LineString">LineString</Option>
+        </Select>
+      </Form.Item>
+      <Form.Item name="coordinates" label="Coordinates">
+        <Input placeholder="Enter coordinates separated by commas" />
       </Form.Item>
       <Form.Item name="information" label="Information">
         <Input.TextArea rows={4} />
@@ -76,13 +128,37 @@ const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
       <Form.Item name="topElevation" label="Top Elevation">
         <Input />
       </Form.Item>
-      <Form.Item name="totalLifts" label="Total Lifts">
-        <Input type="number" />
-      </Form.Item>
       <Form.Item name="notes" label="Notes">
         <Input.TextArea rows={4} />
       </Form.Item>
-      <Form.Item name="image" label="Image URL">
+      <Form.Item name={['runs', 'open']} label="Open Runs">
+        <InputNumber />
+      </Form.Item>
+      <Form.Item name={['runs', 'total']} label="Total Runs">
+        <InputNumber />
+      </Form.Item>
+      <Form.Item name="terrainParks" label="Terrain Parks">
+        <InputNumber />
+     </Form.Item>
+     <Form.Item name="gondolas" label="Gondolas">
+        <InputNumber />
+     </Form.Item>
+      <Form.Item name={['lifts', 'open']} label="Open Lifts">
+        <InputNumber />
+      </Form.Item>
+      <Form.Item name={['lifts', 'total']} label="Total Lifts">
+        <InputNumber />
+      </Form.Item>
+      <Form.Item name="snowCats" label="Snow Cats">
+        <InputNumber />
+      </Form.Item>
+      <Form.Item name="helicopters" label="Helicopters">
+        <InputNumber />
+      </Form.Item>
+      <Form.Item name="imageUrl" label="Image URL">
+        <Input />
+      </Form.Item>
+      <Form.Item name="skiable_terrain" label="Skiable Terrain">
         <Input />
       </Form.Item>
       <Form.Item name="geoJSONFile" label="GeoJSON File" valuePropName="file">
