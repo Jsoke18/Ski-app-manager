@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Form, Input, Button, Upload, Select, InputNumber } from 'antd';
-import { InboxOutlined } from '@ant-design/icons';
+import { InboxOutlined, UploadOutlined } from '@ant-design/icons';
+import { uploadImageToGCS } from '../../../services/GoogleBucketService';
 
 const { Dragger } = Upload;
 const { Option } = Select;
@@ -27,7 +28,8 @@ const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
     }
   }, [editingResort, form]);
 
-  const onFinish = (values) => {
+
+  const onFinish = async (values) => {
     console.log('Form values:', values);
     const formData = new FormData();
     formData.append('name', values.name);
@@ -42,15 +44,14 @@ const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
     formData.append('terrainParks', values.terrainParks);
     formData.append('lifts', JSON.stringify(values.lifts));
     formData.append('gondolas', values.gondolas);
-    formData.append('imageUrl', values.imageUrl);
     formData.append('skiable_terrain', values.skiable_terrain);
     formData.append('snowCats', values.snowCats);
     formData.append('helicopters', values.helicopters);
-    
+  
     if (geoJSONFile) {
       formData.append('geoJSONFile', geoJSONFile);
     }
-    
+  
     // Add location data to the formData
     if (editingResort && editingResort.location) {
       if (values.coordinates) {
@@ -72,6 +73,10 @@ const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
       }));
     }
   
+    if (values.image && values.image.fileList && values.image.fileList[0]) {
+      formData.append('imageFile', values.image.fileList[0].originFileObj);
+    }
+  
     if (editingResort) {
       formData.append('_id', editingResort._id);
       onUpdateResort(formData);
@@ -82,6 +87,7 @@ const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
     form.resetFields();
     setGeoJSONFile(null);
   };
+  
 
   const geoJSONProps = {
     name: 'geoJSONFile',
@@ -155,27 +161,34 @@ const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
       <Form.Item name="helicopters" label="Helicopters">
         <InputNumber />
       </Form.Item>
-      <Form.Item name="imageUrl" label="Image URL">
-        <Input />
-      </Form.Item>
       <Form.Item name="skiable_terrain" label="Skiable Terrain">
-        <Input />
-      </Form.Item>
-      <Form.Item name="geoJSONFile" label="GeoJSON File" valuePropName="file">
-        <Dragger {...geoJSONProps}>
-          <p className="ant-upload-drag-icon">
-            <InboxOutlined />
-          </p>
-          <p className="ant-upload-text">Click or drag a GeoJSON file to this area to upload</p>
-        </Dragger>
-      </Form.Item>
-      <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
-        <Button type="primary" htmlType="submit">
-          {editingResort ? 'Update Resort' : 'Add Resort'}
-        </Button>
-      </Form.Item>
-    </Form>
-  );
+      <Input />
+    </Form.Item>
+    <Form.Item name="geoJSONFile" label="GeoJSON File" valuePropName="file">
+      <Dragger {...geoJSONProps}>
+        <p className="ant-upload-drag-icon">
+          <InboxOutlined />
+        </p>
+        <p className="ant-upload-text">Click or drag a GeoJSON file to this area to upload</p>
+      </Dragger>
+    </Form.Item>
+    <Form.Item name="image" label="Image" valuePropName="file">
+      <Upload
+        name="image"
+        accept="image/*"
+        beforeUpload={() => false}
+        maxCount={1}
+      >
+        <Button icon={<UploadOutlined />}>Click to Upload</Button>
+      </Upload>
+    </Form.Item>
+    <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
+      <Button type="primary" htmlType="submit">
+        {editingResort ? 'Update Resort' : 'Add Resort'}
+      </Button>
+    </Form.Item>
+  </Form>
+);
 };
 
 export default ResortForm;

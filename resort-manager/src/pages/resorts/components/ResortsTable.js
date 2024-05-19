@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, props } from "react";
 import { Table, Button, Modal, message } from "antd";
 import ResortForm from "./ResortsForm";
 import {
@@ -24,7 +24,12 @@ const ResortTable = ({ data, setData }) => {
             <img
               src={record.imageUrl}
               alt={record.name}
-              style={{ width: 50, height: 50, marginRight: 8, objectFit: "cover" }}
+              style={{
+                width: 50,
+                height: 50,
+                marginRight: 8,
+                objectFit: "cover",
+              }}
             />
           )}
           <span>{text}</span>
@@ -42,13 +47,21 @@ const ResortTable = ({ data, setData }) => {
     },
     { title: "Country", dataIndex: "country", key: "country" },
     { title: "Province", dataIndex: "province", key: "province" },
-    { title: "Skiable Terrain", dataIndex: "skiable_terrain", key: "skiable_terrain" },
+    {
+      title: "Skiable Terrain",
+      dataIndex: "skiable_terrain",
+      key: "skiable_terrain",
+    },
     { title: "Longest Run", dataIndex: "longestRun", key: "longestRun" },
     {
       title: "Runs",
       dataIndex: "runs",
       key: "runs",
-      render: (runs) => `${runs.open || 0} / ${runs.total || 0}`,
+      render: (runs) => {
+        const open = runs?.open || 0;
+        const total = runs?.total || 0;
+        return `${open} / ${total}`;
+      },
     },
     {
       title: "Base Elevation",
@@ -57,10 +70,14 @@ const ResortTable = ({ data, setData }) => {
     },
     { title: "Top Elevation", dataIndex: "topElevation", key: "topElevation" },
     {
-      title: 'Lifts',
-      dataIndex: 'lifts',
-      key: 'lifts',
-      render: (lifts) => `${lifts.open || 0} / ${lifts.total || 0}`,
+      title: "Lifts",
+      dataIndex: "lifts",
+      key: "lifts",
+      render: (lifts) => {
+        const open = lifts?.open || 0;
+        const total = lifts?.total || 0;
+        return `${open} / ${total}`;
+      },
     },
     {
       title: "Actions",
@@ -82,35 +99,35 @@ const ResortTable = ({ data, setData }) => {
     setIsAddingResort(false);
     setModalVisible(false);
   };
-  const handleDeleteResort = async (resortId) => {
-    try {
-      const response = await deleteResort(resortId);
-      if (response && response.data) {
-        // Remove the deleted resort from the data source
-        const updatedData = data.filter((resort) => resort._id !== resortId);
-        setData(updatedData);
-        message.success("Resort deleted successfully");
-      } else {
-        message.error("Failed to delete resort");
-      }
-    } catch (error) {
-      console.error("Error deleting resort:", error);
-      if (error.response && error.response.data && error.response.data.error) {
-        message.error(error.response.data.error);
-      } else {
-        message.error("An error occurred while deleting the resort");
-      }
-    }
-  };
 
   const handleAddResort = async (formData) => {
     try {
       const addedResort = await addResort(formData);
       console.log("Added resort:", addedResort);
-      // Update the data state with the newly added resort
-      setData([...data, addedResort.data]); // Assuming the response contains the added resort data
-      handleCloseModal();
-      message.success("Resort added successfully");
+  
+      if (addedResort && typeof addedResort === 'object' && addedResort.hasOwnProperty('name')) {
+        const sanitizedResort = {
+          ...addedResort,
+          baseElevation: addedResort.baseElevation || '',
+          topElevation: addedResort.topElevation || '',
+          country: addedResort.country || '',
+          province: addedResort.province || '',
+          information: addedResort.information || '',
+          longestRun: addedResort.longestRun || '',
+          imageUrl: addedResort.imageUrl || '',
+          runs: addedResort.runs || { open: 0, total: 0 },
+          lifts: addedResort.lifts || { open: 0, total: 0 },
+          skiable_terrain: addedResort.skiable_terrain || '',
+        };
+  
+        setData((prevData) => [...prevData, sanitizedResort]);
+        handleCloseModal();
+        message.success("Resort added successfully");
+      } else {
+        console.log('failed in table');
+        console.log('addedResort:', addedResort);
+        message.error("Failed to add resort, message from table");
+      }
     } catch (error) {
       console.error("Error adding resort:", error);
       if (error.response && error.response.data && error.response.data.error) {
@@ -120,17 +137,46 @@ const ResortTable = ({ data, setData }) => {
       }
     }
   };
-
+  const handleDeleteResort = (resortId) => {
+    Modal.confirm({
+      title: 'Are you sure delete this resort?',
+      content: 'Some descriptions',
+      okText: 'Yes',
+      okType: 'danger',
+      cancelText: 'No',
+      onOk: async () => {
+        try {
+          const response = await deleteResort(resortId);
+          if (response && response.message === 'Resort deleted successfully') {
+            const updatedResorts = data.filter((resort) => resort._id !== resortId);
+            setData(updatedResorts);
+            message.success("Resort deleted successfully", () => {
+              setData([...updatedResorts]);
+            });
+          } else {
+            message.error("Failed to delete resort. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error deleting resort:", error);
+          message.error("Failed to delete resort. Please try again.");
+        }
+      },
+      onCancel() {
+        console.log('Cancel');
+      },
+    });
+  };
   const handleUpdateResort = async (updatedResort) => {
     try {
       const response = await updateResort(updatedResort);
       console.log("Updated resort:", response);
       if (response && response.data) {
         // Update the data source with the updated resort
-        const updatedData = data.map((resort) =>
-          resort._id === response.data._id ? response.data : resort
+        setData((prevData) =>
+          prevData.map((resort) =>
+            resort._id === response.data._id ? response.data : resort
+          )
         );
-        setData(updatedData);
         handleCloseModal();
         message.success("Resort updated successfully");
       } else {

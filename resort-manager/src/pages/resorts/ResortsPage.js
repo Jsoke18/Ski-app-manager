@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Typography, Alert, Row, Col, Button } from 'antd';
-import ResortForm from './components/ResortsForm';
-import ResortTable from './components/ResortsTable';
-import { fetchResorts, addResort, updateResort } from '../../services/resortService';
+import React, { useState, useEffect } from "react";
+import { Typography, Alert, Row, Col, Button, message } from "antd";
+import ResortForm from "./components/ResortsForm";
+import ResortTable from "./components/ResortsTable";
+import {
+  fetchResorts,
+  addResort,
+  updateResort,
+  deleteResort,
+} from "../../services/resortService";
 
 const { Title } = Typography;
 
@@ -15,19 +20,24 @@ const ResortsPage = () => {
     fetchResorts()
       .then((data) => setResorts(data))
       .catch((error) => {
-        console.error('Error fetching resorts:', error);
-        setError('Failed to fetch resorts. Please try again.');
+        console.error("Error fetching resorts:", error);
+        setError("Failed to fetch resorts. Please try again.");
       });
   }, []);
 
   const handleAddResort = async (newResort) => {
     try {
       const addedResort = await addResort(newResort);
-      console.log('Resort added:', addedResort);
-      setResorts([...resorts, addedResort]);
+      console.log("Resort added:", addedResort);
+      if (addedResort) {
+        setResorts([...resorts, addedResort]);
+        setError(null);
+      } else {
+        setError("Failed to add resort. Please try again.");
+      }
     } catch (error) {
-      console.error('Error adding resort:', error);
-      setError('Failed to add resort. Please try again.');
+      console.error("Error adding resort:", error);
+      setError("Failed to add resort. Please try again.");
     }
   };
 
@@ -35,13 +45,41 @@ const ResortsPage = () => {
     setEditingResort(resort);
   };
 
+  const updateResorts = (updatedResorts) => {
+    setResorts(updatedResorts);
+  };
+
+
+  const handleDeleteResort = async (resortId) => {
+    try {
+      const response = await deleteResort(resortId);
+      if (response && response.data) {
+        const updatedResorts = resorts.filter((resort) => resort._id !== resortId);
+        setResorts(updatedResorts);
+        message.success("Resort deleted successfully", () => {
+          setResorts([...updatedResorts]);
+        });
+      } else {
+        message.error("Failed to delete resort. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error deleting resort:", error);
+      message.error("Failed to delete resort. Please try again.");
+    }
+  };
   return (
     <div>
       {error && <Alert message={error} type="error" closable />}
       <Row gutter={16}>
         <Col span={editingResort ? 12 : 24}>
           <Title level={2}>Resorts</Title>
-          <ResortTable data={resorts} setData={setResorts} handleEdit={handleEdit} />
+          <ResortTable
+            data={resorts}
+            setData={setResorts}
+            handleEdit={handleEdit}
+            handleAddResort={handleAddResort}
+            handleDeleteResort={handleDeleteResort} // Pass handleDeleteResort as a prop
+          />
         </Col>
         {editingResort && (
           <Col span={12}>
