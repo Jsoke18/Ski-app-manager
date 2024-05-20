@@ -173,15 +173,18 @@ const ResortForm = ({ editingResort, onUpdateResort, isAddingResort }) => {
       </Dragger>
     </Form.Item>
     <Form.Item name="image" label="Image" valuePropName="file">
-      <Upload
-        name="image"
-        accept="image/*"
-        beforeUpload={() => false}
-        maxCount={1}
-      >
-        <Button icon={<UploadOutlined />}>Click to Upload</Button>
-      </Upload>
-    </Form.Item>
+  <Dragger
+    name="image"
+    accept="image/*"
+    beforeUpload={() => false}
+    maxCount={1}
+  >
+    <p className="ant-upload-drag-icon">
+      <InboxOutlined />
+    </p>
+    <p className="ant-upload-text">Click or drag an image file to this area to upload</p>
+  </Dragger>
+</Form.Item>
     <Form.Item wrapperCol={{ offset: 6, span: 18 }}>
       <Button type="primary" htmlType="submit">
         {editingResort ? 'Update Resort' : 'Add Resort'}

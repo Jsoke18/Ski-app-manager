@@ -204,7 +204,6 @@ const ResortTable = ({ data, setData }) => {
 
   const tableTitle = () => (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <span>Resorts</span>
       <Button type="primary" onClick={() => setIsAddingResort(true)}>
         Add Resort
       </Button>

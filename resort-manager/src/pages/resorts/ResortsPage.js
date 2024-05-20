@@ -72,7 +72,6 @@ const ResortsPage = () => {
       {error && <Alert message={error} type="error" closable />}
       <Row gutter={16}>
         <Col span={editingResort ? 12 : 24}>
-          <Title level={2}>Resorts</Title>
           <ResortTable
             data={resorts}
             setData={setResorts}
