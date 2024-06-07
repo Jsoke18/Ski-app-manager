@@ -4,6 +4,8 @@
   "private": true,
   "dependencies": {
     "@ant-design/icons": "^5.3.7",
+    "@canva/app-ui-kit": "^3.5.1",
+    "@filerobot/image-editor": "^3.47.1",
     "@google-cloud/storage": "^7.11.0",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
