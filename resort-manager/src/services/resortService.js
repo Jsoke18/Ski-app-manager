@@ -31,6 +31,7 @@ export const addResort = async (formData) => {
     throw error;
   }
 };
+
 export const updateResort = async (formData) => {
   try {
     console.log('geoJSONFile:', formData.get('geoJSONFile'));
