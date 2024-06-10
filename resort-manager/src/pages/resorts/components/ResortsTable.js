@@ -37,6 +37,12 @@ const ResortTable = ({ data, setData }) => {
       ),
     },
     {
+      title: "GeoJSON Data",
+      dataIndex: "geoJsonData",
+      key: "geoJsonData",
+      render: (geoJsonData) => (geoJsonData ? "Yes" : "No"),
+    },
+    {
       title: "Location",
       dataIndex: "location",
       key: "location",
