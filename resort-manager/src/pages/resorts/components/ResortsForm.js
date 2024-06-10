@@ -58,15 +58,15 @@ const ResortForm = ({
       formData.append("geoJSONFile", geoJSONFile);
     }
 
-    // Add location data to the formData
     if (editingResort && editingResort.location) {
       if (values.coordinates) {
         // Update the coordinates if provided in the form
+        const [latitude, longitude] = values.coordinates
+          .split(",")
+          .map((coord) => parseFloat(coord.trim()));
         const updatedLocation = {
           ...editingResort.location,
-          coordinates: values.coordinates
-            .split(",")
-            .map((coord) => parseFloat(coord.trim())),
+          coordinates: [longitude, latitude], // Swap the coordinates
         };
         formData.append("location", JSON.stringify(updatedLocation));
       } else {
@@ -75,13 +75,14 @@ const ResortForm = ({
       }
     } else if (values.locationType && values.coordinates) {
       // Create a new location object if locationType and coordinates are provided
+      const [latitude, longitude] = values.coordinates
+        .split(",")
+        .map((coord) => parseFloat(coord.trim()));
       formData.append(
         "location",
         JSON.stringify({
           type: values.locationType,
-          coordinates: values.coordinates
-            .split(",")
-            .map((coord) => parseFloat(coord.trim())),
+          coordinates: [longitude, latitude], // Swap the coordinates
         })
       );
     }
