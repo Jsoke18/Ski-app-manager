@@ -225,12 +225,12 @@ const ResortTable = ({ data, setData }) => {
           )
         );
         
-        // Update the editingResort state with the new data so the form reflects the changes
-        setEditingResort(response.data);
-        
         message.success("Resort updated successfully");
+        handleCloseModal(); // Close modal after successful update
+        return true; // Indicate success
       } else {
         message.error("Failed to update resort");
+        return false; // Indicate failure
       }
     } catch (error) {
       console.error("Error updating resort:", error);
@@ -239,6 +239,7 @@ const ResortTable = ({ data, setData }) => {
       } else {
         message.error("An error occurred while updating the resort");
       }
+      return false; // Indicate failure
     }
   };
 
@@ -282,7 +283,7 @@ const ResortTable = ({ data, setData }) => {
           onUpdateResort={(updatedResort) => {
             if (editingResort) {
               handleUpdateResort(updatedResort);
-              // Don't close modal for updates - let user continue editing
+              handleCloseModal(); // Close modal after successful update
             } else {
               handleAddResort(updatedResort);
               handleCloseModal(); // Close modal for new additions
