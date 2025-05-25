@@ -17,6 +17,7 @@ const ResortForm = ({
   const [geoJSONFile, setGeoJSONFile] = useState(null);
   const [skiPasses, setSkiPasses] = useState([]);
   const [loadingSkiPasses, setLoadingSkiPasses] = useState(false);
+  const [imageFileList, setImageFileList] = useState([]);
 
   useEffect(() => {
     loadSkiPasses();
@@ -37,9 +38,16 @@ const ResortForm = ({
   useEffect(() => {
     if (initialValues) {
       form.setFieldsValue(initialValues);
+      setImageFileList([]); // Reset image file list
     } else if (editingResort) {
+      // Exclude image-related fields from form initialization to avoid conflicts
+      const { imageUrl, image, ...resortDataWithoutImage } = editingResort;
+      
+      console.log("Initializing form for editing resort:", editingResort.name);
+      console.log("Existing imageUrl:", imageUrl);
+      
       form.setFieldsValue({
-        ...editingResort,
+        ...resortDataWithoutImage,
         runs: {
           open: editingResort.runs?.open || null,
           total: editingResort.runs?.total || 0,
@@ -51,17 +59,26 @@ const ResortForm = ({
         skiPasses: editingResort.skiPasses?.map(pass => 
           typeof pass === 'object' ? pass._id : pass
         ) || [],
+        // Explicitly set image field to empty array to ensure clean state
+        image: [],
       });
+      setImageFileList([]); // Reset image file list for editing
+      
+      console.log("Form initialized with empty image field for editing");
     } else {
       form.resetFields();
+      setImageFileList([]); // Reset image file list
     }
   }, [editingResort, form, initialValues]);
 
   const onFinish = async (values) => {
+    console.log("=== FORM SUBMISSION DEBUG ===");
     console.log("Form values:", values);
     console.log("Image field in values:", values.image);
     console.log("Image array length:", values.image?.length);
     console.log("First image file:", values.image?.[0]);
+    console.log("Is editing resort:", !!editingResort);
+    console.log("Resort being edited:", editingResort?.name);
     const formData = new FormData();
     formData.append("name", values.name);
     formData.append("province", values.province);
@@ -118,17 +135,45 @@ const ResortForm = ({
       );
     }
 
-    if (values.image && values.image.length > 0 && values.image[0].originFileObj) {
-      // New image uploaded - send only the new image file
-      console.log("Sending new image file:", values.image[0].originFileObj.name);
+    // Handle image upload logic
+    const hasImageInForm = values.image && values.image.length > 0;
+    const hasNewImageFile = hasImageInForm && values.image[0].originFileObj;
+    const hasExistingImage = editingResort && editingResort.imageUrl;
+    
+    console.log("Image handling debug:");
+    console.log("- values.image:", values.image);
+    console.log("- hasImageInForm:", hasImageInForm);
+    console.log("- hasNewImageFile:", hasNewImageFile);
+    console.log("- hasExistingImage:", hasExistingImage);
+    console.log("- editingResort.imageUrl:", editingResort?.imageUrl);
+    
+    if (hasImageInForm) {
+      console.log("- File object details:");
+      console.log("  - name:", values.image[0].name);
+      console.log("  - uid:", values.image[0].uid);
+      console.log("  - lastModified:", values.image[0].lastModified);
+      console.log("  - originFileObj:", values.image[0].originFileObj);
+      console.log("  - originFileObj.name:", values.image[0].originFileObj?.name);
+      console.log("  - originFileObj.lastModified:", values.image[0].originFileObj?.lastModified);
+      console.log("  - status:", values.image[0].status);
+    }
+    
+    if (hasNewImageFile) {
+      // Send new image
+      console.log("✓ Sending new image file:", values.image[0].originFileObj.name);
       formData.append("imageFile", values.image[0].originFileObj);
-    } else if (editingResort && editingResort.imageUrl) {
-      // No new image provided - preserve existing image
-      console.log("Preserving existing image:", editingResort.imageUrl);
+    } else if (hasExistingImage && !hasImageInForm) {
+      // Preserve existing only if no image in form
+      console.log("✓ Preserving existing image:", editingResort.imageUrl);
       formData.append("existingImageUrl", editingResort.imageUrl);
     } else {
-      console.log("No image data - will clear image");
+      console.log("✓ No image data - will clear image");
     }
+    
+    console.log("=== FINAL IMAGE DECISION ===");
+    console.log("Decision: ", hasNewImageFile ? "SEND_NEW_IMAGE" : (hasExistingImage && !hasImageInForm) ? "PRESERVE_EXISTING" : "CLEAR_IMAGE");
+    console.log("FormData keys:", Array.from(formData.keys()));
+    console.log("=== END IMAGE DECISION ===");
 
     if (editingResort) {
       formData.append("_id", editingResort._id);
@@ -139,6 +184,7 @@ const ResortForm = ({
 
     form.resetFields();
     setGeoJSONFile(null);
+    setImageFileList([]);
   };
 
   const geoJSONProps = {
@@ -308,15 +354,70 @@ const ResortForm = ({
           </div>
         )}
         <Dragger
-          name="image"
           accept="image/*"
-          beforeUpload={(file) => {
-            console.log("File selected in upload component:", file.name);
-            return false;
-          }}
           maxCount={1}
+          fileList={imageFileList}
+          customRequest={({ file, onSuccess }) => {
+            console.log("File selected in upload component:", file.name);
+            console.log("File object:", file);
+            console.log("File size:", file.size);
+            console.log("File lastModified:", file.lastModified);
+            console.log("File type:", file.type);
+            
+            // Immediately call onSuccess to mark upload as complete without actually uploading
+            setTimeout(() => {
+              onSuccess("ok");
+            }, 0);
+          }}
           onChange={(info) => {
-            console.log("Upload onChange:", info);
+            console.log("Upload onChange triggered:", info);
+            console.log("FileList in onChange:", info.fileList);
+            console.log("File status:", info.file.status);
+            console.log("File originFileObj exists:", !!info.file.originFileObj);
+            
+            // When a new file is added, completely replace the old one
+            if (info.file.status === 'uploading' || info.file.status === 'done') {
+              console.log("New file being processed:", {
+                name: info.file.name,
+                uid: info.file.uid,
+                status: info.file.status,
+                lastModified: info.file.lastModified,
+                size: info.file.size,
+                hasOriginFileObj: !!info.file.originFileObj,
+                originFileObj: info.file.originFileObj ? {
+                  name: info.file.originFileObj.name,
+                  lastModified: info.file.originFileObj.lastModified,
+                  size: info.file.originFileObj.size
+                } : null
+              });
+              
+              // Ensure the file has originFileObj (actual file data)
+              if (info.file.originFileObj) {
+                // Force replace with only the new file
+                const newFileList = [info.file];
+                
+                // Update our controlled state
+                setImageFileList(newFileList);
+                
+                // Update the form field manually
+                form.setFieldsValue({ image: newFileList });
+                
+                console.log("✓ Successfully set new file in form:", newFileList);
+              } else {
+                console.warn("⚠️ File uploaded but no originFileObj found");
+              }
+            } else if (info.file.status === 'removed') {
+              // Handle file removal
+              setImageFileList([]);
+              form.setFieldsValue({ image: [] });
+              console.log("File removed, cleared fileList");
+            } else if (info.file.status === 'error') {
+              console.error("File upload error:", info.file.error);
+            }
+          }}
+          showUploadList={{
+            showPreviewIcon: true,
+            showRemoveIcon: true,
           }}
         >
           <p className="ant-upload-drag-icon">

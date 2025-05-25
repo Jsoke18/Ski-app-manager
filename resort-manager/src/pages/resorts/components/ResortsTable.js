@@ -224,7 +224,10 @@ const ResortTable = ({ data, setData }) => {
             resort._id === response.data._id ? response.data : resort
           )
         );
-        handleCloseModal();
+        
+        // Update the editingResort state with the new data so the form reflects the changes
+        setEditingResort(response.data);
+        
         message.success("Resort updated successfully");
       } else {
         message.error("Failed to update resort");
@@ -279,10 +282,11 @@ const ResortTable = ({ data, setData }) => {
           onUpdateResort={(updatedResort) => {
             if (editingResort) {
               handleUpdateResort(updatedResort);
+              // Don't close modal for updates - let user continue editing
             } else {
               handleAddResort(updatedResort);
+              handleCloseModal(); // Close modal for new additions
             }
-            handleCloseModal();
           }}
         />
       </Modal>

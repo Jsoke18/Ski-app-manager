@@ -46,6 +46,8 @@ export const updateResort = async (formData) => {
         'Content-Type': 'multipart/form-data',
       },
     });
+    console.log('Update response status:', response.status);
+    console.log('Update response data:', response.data);
     return response;
   } catch (error) {
     console.error('Error updating resort:', error);
@@ -72,7 +74,7 @@ export const deleteResort = async (resortId) => {
       // Unsuccessful deletion
       throw new Error('Failed to delete resort');
     }
-  } catch (error) { 
+  } catch (error) {
     console.error('Error deleting resort:', error);
     throw error;
   }
