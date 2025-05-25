@@ -43,6 +43,12 @@ const ResortTable = ({ data, setData }) => {
       render: (geoJsonData) => (geoJsonData ? "Yes" : "No"),
     },
     {
+      title: "Mapbox Tile URL",
+      dataIndex: "mapboxVectorUrl",
+      key: "mapboxVectorUrl",
+      render: (mapboxVectorUrl) => (mapboxVectorUrl ? "Yes" : "No"),
+    },
+    {
       title: "Location",
       dataIndex: "location",
       key: "location",
@@ -83,6 +89,41 @@ const ResortTable = ({ data, setData }) => {
         const open = lifts?.open || 0;
         const total = lifts?.total || 0;
         return `${open} / ${total}`;
+      },
+    },
+    {
+      title: "Ski Passes",
+      dataIndex: "skiPasses",
+      key: "skiPasses",
+      render: (skiPasses) => {
+        if (!skiPasses || skiPasses.length === 0) {
+          return <span style={{ color: '#999' }}>None</span>;
+        }
+        return (
+          <div>
+            {skiPasses.slice(0, 2).map((pass, index) => (
+              <span
+                key={index}
+                style={{
+                  backgroundColor: pass?.color || '#1890ff',
+                  color: 'white',
+                  padding: '2px 6px',
+                  borderRadius: '3px',
+                  margin: '2px',
+                  display: 'inline-block',
+                  fontSize: '11px'
+                }}
+              >
+                {typeof pass === 'object' ? pass.name : pass}
+              </span>
+            ))}
+            {skiPasses.length > 2 && (
+              <span style={{ fontSize: '11px', color: '#666' }}>
+                +{skiPasses.length - 2} more
+              </span>
+            )}
+          </div>
+        );
       },
     },
     {

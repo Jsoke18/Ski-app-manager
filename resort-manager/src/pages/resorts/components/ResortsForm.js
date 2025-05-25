@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Form, Input, Button, Upload, Select, InputNumber } from "antd";
 import { InboxOutlined, UploadOutlined } from "@ant-design/icons";
 import { uploadImageToGCS } from "../../../services/GoogleBucketService";
+import { fetchSkiPasses } from "../../../services/skiPassService";
 
 const { Dragger } = Upload;
 const { Option } = Select;
@@ -14,6 +15,24 @@ const ResortForm = ({
 }) => {
   const [form] = Form.useForm();
   const [geoJSONFile, setGeoJSONFile] = useState(null);
+  const [skiPasses, setSkiPasses] = useState([]);
+  const [loadingSkiPasses, setLoadingSkiPasses] = useState(false);
+
+  useEffect(() => {
+    loadSkiPasses();
+  }, []);
+
+  const loadSkiPasses = async () => {
+    try {
+      setLoadingSkiPasses(true);
+      const data = await fetchSkiPasses();
+      setSkiPasses(data);
+    } catch (error) {
+      console.error('Error loading ski passes:', error);
+    } finally {
+      setLoadingSkiPasses(false);
+    }
+  };
 
   useEffect(() => {
     if (initialValues) {
@@ -29,6 +48,9 @@ const ResortForm = ({
           open: editingResort.lifts?.open || null,
           total: editingResort.lifts?.total || 0,
         },
+        skiPasses: editingResort.skiPasses?.map(pass => 
+          typeof pass === 'object' ? pass._id : pass
+        ) || [],
       });
     } else {
       form.resetFields();
@@ -37,6 +59,9 @@ const ResortForm = ({
 
   const onFinish = async (values) => {
     console.log("Form values:", values);
+    console.log("Image field in values:", values.image);
+    console.log("Image array length:", values.image?.length);
+    console.log("First image file:", values.image?.[0]);
     const formData = new FormData();
     formData.append("name", values.name);
     formData.append("province", values.province);
@@ -53,6 +78,12 @@ const ResortForm = ({
     formData.append("skiable_terrain", values.skiable_terrain);
     formData.append("snowCats", values.snowCats);
     formData.append("helicopters", values.helicopters);
+    formData.append("mapboxVector", values.mapboxVectorUrl);
+
+    // Add ski passes to form data
+    if (values.skiPasses && values.skiPasses.length > 0) {
+      formData.append("skiPasses", JSON.stringify(values.skiPasses));
+    }
 
     if (geoJSONFile) {
       formData.append("geoJSONFile", geoJSONFile);
@@ -87,8 +118,16 @@ const ResortForm = ({
       );
     }
 
-    if (values.image && values.image.fileList && values.image.fileList[0]) {
-      formData.append("imageFile", values.image.fileList[0].originFileObj);
+    if (values.image && values.image.length > 0 && values.image[0].originFileObj) {
+      // New image uploaded - send only the new image file
+      console.log("Sending new image file:", values.image[0].originFileObj.name);
+      formData.append("imageFile", values.image[0].originFileObj);
+    } else if (editingResort && editingResort.imageUrl) {
+      // No new image provided - preserve existing image
+      console.log("Preserving existing image:", editingResort.imageUrl);
+      formData.append("existingImageUrl", editingResort.imageUrl);
+    } else {
+      console.log("No image data - will clear image");
     }
 
     if (editingResort) {
@@ -130,6 +169,9 @@ const ResortForm = ({
       </Form.Item>
       <Form.Item name="province" label="Province">
         <Input />
+        <Form.Item name="mapboxVectorUrl" label="mapboxVectorUrl">
+        <Input />
+      </Form.Item>
       </Form.Item>
       <Form.Item name="locationType" label="Location Type">
         <Select>
@@ -182,6 +224,65 @@ const ResortForm = ({
       <Form.Item name="skiable_terrain" label="Skiable Terrain">
         <Input />
       </Form.Item>
+      <Form.Item name="skiPasses" label="Ski Passes">
+        <Select
+          mode="multiple"
+          style={{ width: '100%' }}
+          placeholder="Select ski passes"
+          optionFilterProp="children"
+          loading={loadingSkiPasses}
+          filterOption={(input, option) =>
+            option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+          }
+          tagRender={(props) => {
+            const { label, value, closable, onClose } = props;
+            const pass = skiPasses.find(p => p._id === value);
+            return (
+              <span
+                style={{
+                  backgroundColor: pass?.color || '#1890ff',
+                  color: 'white',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  margin: '2px',
+                  display: 'inline-block',
+                  fontSize: '12px'
+                }}
+              >
+                {label}
+                {closable && (
+                  <span 
+                    onClick={onClose}
+                    style={{ marginLeft: '8px', cursor: 'pointer' }}
+                  >
+                    ×
+                  </span>
+                )}
+              </span>
+            );
+          }}
+        >
+          {skiPasses.map((pass) => (
+            <Option key={pass._id} value={pass._id}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <div
+                  style={{
+                    width: '12px',
+                    height: '12px',
+                    backgroundColor: pass.color || '#1890ff',
+                    borderRadius: '50%',
+                    marginRight: '8px'
+                  }}
+                />
+                {pass.name}
+                <span style={{ color: '#666', marginLeft: '8px', fontSize: '12px' }}>
+                  ({pass.season})
+                </span>
+              </div>
+            </Option>
+          ))}
+        </Select>
+      </Form.Item>
       <Form.Item name="geoJSONFile" label="GeoJSON File" valuePropName="file">
         <Dragger {...geoJSONProps}>
           <p className="ant-upload-drag-icon">
@@ -192,12 +293,31 @@ const ResortForm = ({
           </p>
         </Dragger>
       </Form.Item>
-      <Form.Item name="image" label="Image" valuePropName="file">
+      <Form.Item name="image" label="Image" valuePropName="fileList">
+        {editingResort && editingResort.imageUrl && (
+          <div style={{ marginBottom: '16px' }}>
+            <p style={{ marginBottom: '8px' }}>Current Image:</p>
+            <img 
+              src={editingResort.imageUrl} 
+              alt="Current resort image" 
+              style={{ maxWidth: '200px', maxHeight: '150px', objectFit: 'cover', borderRadius: '8px' }}
+            />
+            <p style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+              Upload a new image to replace the current one, or leave empty to keep the current image.
+            </p>
+          </div>
+        )}
         <Dragger
           name="image"
           accept="image/*"
-          beforeUpload={() => false}
+          beforeUpload={(file) => {
+            console.log("File selected in upload component:", file.name);
+            return false;
+          }}
           maxCount={1}
+          onChange={(info) => {
+            console.log("Upload onChange:", info);
+          }}
         >
           <p className="ant-upload-drag-icon">
             <InboxOutlined />

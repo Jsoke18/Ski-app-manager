@@ -72,7 +72,7 @@ export const deleteResort = async (resortId) => {
       // Unsuccessful deletion
       throw new Error('Failed to delete resort');
     }
-  } catch (error) {
+  } catch (error) { 
     console.error('Error deleting resort:', error);
     throw error;
   }
