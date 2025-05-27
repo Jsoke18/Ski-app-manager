@@ -288,11 +288,16 @@ const ResortForm = ({
           mode="multiple"
           style={{ width: '100%' }}
           placeholder="Select ski passes"
-          optionFilterProp="children"
           loading={loadingSkiPasses}
-          filterOption={(input, option) =>
-            option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-          }
+          filterOption={(input, option) => {
+            const pass = skiPasses.find(p => p._id === option.value);
+            if (!pass) return false;
+            const searchText = input.toLowerCase();
+            return (
+              pass.name.toLowerCase().includes(searchText) ||
+              pass.season.toLowerCase().includes(searchText)
+            );
+          }}
           tagRender={(props) => {
             const { label, value, closable, onClose } = props;
             const pass = skiPasses.find(p => p._id === value);
