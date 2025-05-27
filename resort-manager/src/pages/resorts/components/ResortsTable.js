@@ -60,6 +60,26 @@ const ResortTable = ({ data, setData }) => {
     { title: "Country", dataIndex: "country", key: "country" },
     { title: "Province", dataIndex: "province", key: "province" },
     {
+      title: "Website",
+      dataIndex: "website",
+      key: "website",
+      render: (website) => {
+        if (!website) {
+          return <span style={{ color: '#999' }}>No website</span>;
+        }
+        return (
+          <a 
+            href={website} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ color: '#1890ff' }}
+          >
+            Visit Website
+          </a>
+        );
+      },
+    },
+    {
       title: "Skiable Terrain",
       dataIndex: "skiable_terrain",
       key: "skiable_terrain",
@@ -280,13 +300,13 @@ const ResortTable = ({ data, setData }) => {
         <ResortForm
           editingResort={editingResort || null}
           isAddingResort={!editingResort}
-          onUpdateResort={(updatedResort) => {
+          onUpdateResort={async (updatedResort) => {
             if (editingResort) {
-              handleUpdateResort(updatedResort);
-              handleCloseModal(); // Close modal after successful update
+              await handleUpdateResort(updatedResort);
+              // Modal will be closed by handleUpdateResort if successful
             } else {
-              handleAddResort(updatedResort);
-              handleCloseModal(); // Close modal for new additions
+              await handleAddResort(updatedResort);
+              // Modal is already closed by handleAddResort if successful
             }
           }}
         />

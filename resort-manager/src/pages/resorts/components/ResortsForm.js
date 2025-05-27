@@ -83,6 +83,7 @@ const ResortForm = ({
     formData.append("name", values.name);
     formData.append("province", values.province);
     formData.append("country", values.country);
+    formData.append("website", values.website || "");
     formData.append("information", values.information);
     formData.append("longestRun", values.longestRun);
     formData.append("baseElevation", values.baseElevation);
@@ -215,9 +216,21 @@ const ResortForm = ({
       </Form.Item>
       <Form.Item name="province" label="Province">
         <Input />
-        <Form.Item name="mapboxVectorUrl" label="mapboxVectorUrl">
-        <Input />
       </Form.Item>
+      <Form.Item 
+        name="website" 
+        label="Website" 
+        rules={[
+          {
+            type: 'url',
+            message: 'Please enter a valid URL (e.g., https://example.com)',
+          },
+        ]}
+      >
+        <Input placeholder="https://example.com" />
+      </Form.Item>
+      <Form.Item name="mapboxVectorUrl" label="mapboxVectorUrl">
+        <Input />
       </Form.Item>
       <Form.Item name="locationType" label="Location Type">
         <Select>
