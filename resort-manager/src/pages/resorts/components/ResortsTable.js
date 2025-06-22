@@ -29,16 +29,43 @@ const ResortTable = ({ data, setData }) => {
   const [skiPassFilter, setSkiPassFilter] = useState(""); // "all", "with", "without"
   const [websiteFilter, setWebsiteFilter] = useState(""); // "all", "with", "without"
 
-  // Extract unique values for filter dropdowns
+  // Extract unique values for filter dropdowns with counts
   const uniqueCountries = useMemo(() => {
-    const countries = [...new Set(data.map(resort => resort.country).filter(Boolean))];
-    return countries.sort();
+    const countryCount = {};
+    data.forEach(resort => {
+      if (resort.country) {
+        countryCount[resort.country] = (countryCount[resort.country] || 0) + 1;
+      }
+    });
+    
+    return Object.keys(countryCount)
+      .sort()
+      .map(country => ({
+        name: country,
+        count: countryCount[country]
+      }));
   }, [data]);
 
   const uniqueProvinces = useMemo(() => {
-    const provinces = [...new Set(data.map(resort => resort.province).filter(Boolean))];
-    return provinces.sort();
-  }, [data]);
+    const provinceCount = {};
+    // Filter provinces by selected country if one is selected
+    const relevantResorts = countryFilter 
+      ? data.filter(resort => resort.country === countryFilter)
+      : data;
+    
+    relevantResorts.forEach(resort => {
+      if (resort.province) {
+        provinceCount[resort.province] = (provinceCount[resort.province] || 0) + 1;
+      }
+    });
+    
+    return Object.keys(provinceCount)
+      .sort()
+      .map(province => ({
+        name: province,
+        count: provinceCount[province]
+      }));
+  }, [data, countryFilter]);
 
   // Filter the data based on all filter criteria
   const filteredData = useMemo(() => {
@@ -742,48 +769,100 @@ const ResortTable = ({ data, setData }) => {
         </Col>
       </Row>
 
-      {/* Clean filter controls */}
-      <Card size="small" style={{ borderRadius: 8, padding: '12px 16px' }}>
-        <Row gutter={[24, 12]} align="middle">
-          {/* Location filters */}
-          <Col>
-            <Space direction="vertical" size={4}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: '#666' }}>Location</span>
+      {/* Enhanced filter controls */}
+      <Card size="small" style={{ borderRadius: 8, padding: '16px 20px' }}>
+        {/* Quick Country Filters */}
+        <Row style={{ marginBottom: 16 }}>
+          <Col span={24}>
+            <Space direction="vertical" size={8}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>🌍 Quick Country Filters</span>
               <Space wrap size={8}>
+                {uniqueCountries.slice(0, 6).map(country => (
+                  <Button
+                    key={country.name}
+                    size="small"
+                    type={countryFilter === country.name ? "primary" : "default"}
+                    onClick={() => setCountryFilter(countryFilter === country.name ? "" : country.name)}
+                    style={{ 
+                      borderRadius: 16,
+                      fontSize: 12,
+                      height: 28,
+                      paddingLeft: 12,
+                      paddingRight: 12
+                    }}
+                  >
+                    {country.name} ({country.count})
+                  </Button>
+                ))}
+                {uniqueCountries.length > 6 && (
+                  <span style={{ fontSize: 12, color: '#999' }}>
+                    +{uniqueCountries.length - 6} more in dropdown
+                  </span>
+                )}
+              </Space>
+            </Space>
+          </Col>
+        </Row>
+
+        <Row gutter={[24, 12]} align="middle">
+          {/* Enhanced Location filters */}
+          <Col>
+            <Space direction="vertical" size={6}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#666' }}>📍 Location Filters</span>
+              <Space wrap size={12}>
                 <Select
-                  placeholder="Any Country"
+                  placeholder="🌎 Select Country"
                   value={countryFilter}
-                  onChange={setCountryFilter}
-                  style={{ width: 120 }}
-                  size="small"
+                  onChange={(value) => {
+                    setCountryFilter(value);
+                    // Clear province filter when country changes
+                    if (value !== countryFilter) {
+                      setProvinceFilter("");
+                    }
+                  }}
+                  style={{ width: 160 }}
+                  size="default"
                   allowClear
+                  showSearch
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  }
                 >
                   {uniqueCountries.map(country => (
-                    <Option key={country} value={country}>{country}</Option>
+                    <Option key={country.name} value={country.name}>
+                      {country.name} ({country.count})
+                    </Option>
                   ))}
                 </Select>
                 <Select
-                  placeholder="Any Province"
+                  placeholder="🏔️ Select Province/State"
                   value={provinceFilter}
                   onChange={setProvinceFilter}
-                  style={{ width: 120 }}
-                  size="small"
+                  style={{ width: 180 }}
+                  size="default"
                   allowClear
+                  showSearch
+                  disabled={!countryFilter && uniqueProvinces.length === 0}
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  }
                 >
                   {uniqueProvinces.map(province => (
-                    <Option key={province} value={province}>{province}</Option>
+                    <Option key={province.name} value={province.name}>
+                      {province.name} ({province.count})
+                    </Option>
                   ))}
                 </Select>
               </Space>
             </Space>
           </Col>
 
-          <Divider type="vertical" style={{ height: 40 }} />
+          <Divider type="vertical" style={{ height: 50 }} />
 
           {/* Feature toggles */}
           <Col>
-            <Space direction="vertical" size={4}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: '#666' }}>Ski Passes</span>
+            <Space direction="vertical" size={6}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#666' }}>🎿 Ski Passes</span>
               <Space size={12}>
                 <Button
                   size="small"
@@ -815,12 +894,12 @@ const ResortTable = ({ data, setData }) => {
             </Space>
           </Col>
 
-          <Divider type="vertical" style={{ height: 40 }} />
+          <Divider type="vertical" style={{ height: 50 }} />
 
           {/* Website toggles */}
           <Col>
-            <Space direction="vertical" size={4}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: '#666' }}>Website</span>
+            <Space direction="vertical" size={6}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#666' }}>🌐 Website</span>
               <Space size={12}>
                 <Button
                   size="small"
@@ -854,9 +933,9 @@ const ResortTable = ({ data, setData }) => {
 
           {/* Clear and results */}
           <Col flex="auto" style={{ textAlign: 'right' }}>
-            <Space direction="vertical" size={4} style={{ alignItems: 'flex-end' }}>
-              <div style={{ fontSize: 13, color: '#666' }}>
-                <strong>{filteredData.length}</strong> of <strong>{data.length}</strong> resorts
+            <Space direction="vertical" size={6} style={{ alignItems: 'flex-end' }}>
+              <div style={{ fontSize: 14, color: '#666', fontWeight: 500 }}>
+                <strong style={{ color: '#1890ff' }}>{filteredData.length}</strong> of <strong>{data.length}</strong> resorts
               </div>
               {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter) && (
                 <Button 
@@ -864,8 +943,9 @@ const ResortTable = ({ data, setData }) => {
                   icon={<ClearOutlined />}
                   onClick={clearAllFilters}
                   style={{ borderRadius: 6 }}
+                  type="dashed"
                 >
-                  Clear All
+                  Clear All Filters
                 </Button>
               )}
             </Space>
@@ -874,17 +954,17 @@ const ResortTable = ({ data, setData }) => {
 
         {/* Active filters summary */}
         {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter) && (
-          <Row style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
+          <Row style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
             <Col span={24}>
-              <Space wrap size={4}>
-                <span style={{ fontSize: 11, color: '#999' }}>Active:</span>
-                {searchText && <Tag size="small" color="blue">"{searchText}"</Tag>}
-                {countryFilter && <Tag size="small">{countryFilter}</Tag>}
-                {provinceFilter && <Tag size="small">{provinceFilter}</Tag>}
-                {skiPassFilter === "with" && <Tag size="small" color="green">Has Ski Passes</Tag>}
-                {skiPassFilter === "without" && <Tag size="small" color="red">No Ski Passes</Tag>}
-                {websiteFilter === "with" && <Tag size="small" color="blue">Has Website</Tag>}
-                {websiteFilter === "without" && <Tag size="small" color="red">No Website</Tag>}
+              <Space wrap size={6}>
+                <span style={{ fontSize: 12, color: '#999', fontWeight: 500 }}>🏷️ Active Filters:</span>
+                {searchText && <Tag size="small" color="blue" closable onClose={() => setSearchText("")}>Search: "{searchText}"</Tag>}
+                {countryFilter && <Tag size="small" color="geekblue" closable onClose={() => setCountryFilter("")}>Country: {countryFilter}</Tag>}
+                {provinceFilter && <Tag size="small" color="cyan" closable onClose={() => setProvinceFilter("")}>Province: {provinceFilter}</Tag>}
+                {skiPassFilter === "with" && <Tag size="small" color="green" closable onClose={() => setSkiPassFilter("")}>Has Ski Passes</Tag>}
+                {skiPassFilter === "without" && <Tag size="small" color="red" closable onClose={() => setSkiPassFilter("")}>No Ski Passes</Tag>}
+                {websiteFilter === "with" && <Tag size="small" color="blue" closable onClose={() => setWebsiteFilter("")}>Has Website</Tag>}
+                {websiteFilter === "without" && <Tag size="small" color="red" closable onClose={() => setWebsiteFilter("")}>No Website</Tag>}
               </Space>
             </Col>
           </Row>
