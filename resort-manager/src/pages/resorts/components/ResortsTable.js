@@ -1,6 +1,6 @@
 import React, { useState, useEffect, props, useMemo } from "react";
-import { Table, Button, Modal, message, Input, Select, Row, Col, Card, Space, Tag, Switch, Divider } from "antd";
-import { SearchOutlined, FilterOutlined, ClearOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import { Table, Button, Modal, message, Input, Select, Row, Col, Card, Space, Tag, Switch, Divider, Typography } from "antd";
+import { SearchOutlined, FilterOutlined, ClearOutlined, CheckOutlined, CloseOutlined, EditOutlined, SaveOutlined } from "@ant-design/icons";
 import ResortForm from "./ResortsForm";
 import {
   fetchResorts,
@@ -10,11 +10,17 @@ import {
 } from "../../../services/resortService";
 
 const { Option } = Select;
+const { Text } = Typography;
 
 const ResortTable = ({ data, setData }) => {
   const [editingResort, setEditingResort] = useState(null);
   const [isAddingResort, setIsAddingResort] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  
+  // Inline editing states
+  const [editingCell, setEditingCell] = useState(null); // { resortId, field }
+  const [editingValue, setEditingValue] = useState("");
+  const [savingCell, setSavingCell] = useState(false);
   
   // Filter states
   const [searchText, setSearchText] = useState("");
@@ -74,6 +80,206 @@ const ResortTable = ({ data, setData }) => {
     setWebsiteFilter("");
   };
 
+  // Inline editing functions
+  const startEditing = (resortId, field, currentValue) => {
+    setEditingCell({ resortId, field });
+    setEditingValue(currentValue || "");
+  };
+
+  const cancelEditing = () => {
+    setEditingCell(null);
+    setEditingValue("");
+  };
+
+  const saveInlineEdit = async () => {
+    if (!editingCell) return;
+    
+    setSavingCell(true);
+    try {
+      const resort = data.find(r => r._id === editingCell.resortId);
+      if (!resort) {
+        message.error("Resort not found");
+        return;
+      }
+
+      // Create FormData object for the update (matching the existing API structure)
+      const formData = new FormData();
+      
+      // Add all existing fields to maintain data integrity
+      formData.append("_id", resort._id);
+      formData.append("name", editingCell.field === 'name' ? editingValue : (resort.name || ""));
+      formData.append("province", editingCell.field === 'province' ? editingValue : (resort.province || ""));
+      formData.append("country", editingCell.field === 'country' ? editingValue : (resort.country || ""));
+      formData.append("website", editingCell.field === 'website' ? editingValue : (resort.website || ""));
+      formData.append("information", resort.information || "");
+      formData.append("longestRun", editingCell.field === 'longestRun' ? editingValue : (resort.longestRun || ""));
+      formData.append("baseElevation", editingCell.field === 'baseElevation' ? editingValue : (resort.baseElevation || ""));
+      formData.append("topElevation", editingCell.field === 'topElevation' ? editingValue : (resort.topElevation || ""));
+      formData.append("notes", resort.notes || "");
+      formData.append("runs", JSON.stringify(resort.runs || { open: 0, total: 0 }));
+      formData.append("terrainParks", resort.terrainParks || "");
+      formData.append("lifts", JSON.stringify(resort.lifts || { open: 0, total: 0 }));
+      formData.append("gondolas", resort.gondolas || "");
+      formData.append("skiable_terrain", editingCell.field === 'skiable_terrain' ? editingValue : (resort.skiable_terrain || ""));
+      formData.append("snowCats", resort.snowCats || "");
+      formData.append("helicopters", resort.helicopters || "");
+      formData.append("mapboxVector", resort.mapboxVectorUrl || "");
+      
+      // Add ski passes if they exist
+      if (resort.skiPasses && resort.skiPasses.length > 0) {
+        const skiPassIds = resort.skiPasses.map(pass => 
+          typeof pass === 'object' ? pass._id : pass
+        );
+        formData.append("skiPasses", JSON.stringify(skiPassIds));
+      }
+      
+      // Add location if it exists
+      if (resort.location) {
+        formData.append("location", JSON.stringify(resort.location));
+      }
+      
+      // Preserve existing image if it exists
+      if (resort.imageUrl) {
+        formData.append("existingImageUrl", resort.imageUrl);
+      }
+
+      console.log(`Updating ${editingCell.field} to: "${editingValue}"`);
+      console.log("FormData entries:");
+      for (const [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+      }
+
+      // Call the update API
+      const response = await updateResort(formData);
+      
+      if (response && response.data) {
+        // Update the local data
+        setData(prevData => 
+          prevData.map(r => 
+            r._id === editingCell.resortId 
+              ? { ...r, [editingCell.field]: editingValue }
+              : r
+          )
+        );
+        
+        message.success(`${editingCell.field.charAt(0).toUpperCase() + editingCell.field.slice(1)} updated successfully`);
+        cancelEditing();
+      } else {
+        message.error("Failed to update resort");
+      }
+    } catch (error) {
+      console.error("Error updating resort:", error);
+      if (error.response && error.response.data && error.response.data.error) {
+        message.error(`Failed to update: ${error.response.data.error}`);
+      } else {
+        message.error("Failed to update resort");
+      }
+    } finally {
+      setSavingCell(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // Prevent form submission
+      e.stopPropagation(); // Stop event bubbling
+      saveInlineEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      cancelEditing();
+    }
+  };
+
+  // Inline editable cell component
+  const EditableCell = ({ value, resortId, field, placeholder, type = "text" }) => {
+    const isEditing = editingCell?.resortId === resortId && editingCell?.field === field;
+    
+    if (isEditing) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Input
+            value={editingValue}
+            onChange={(e) => setEditingValue(e.target.value)}
+            onKeyDown={handleKeyPress}
+            onBlur={(e) => {
+              // Small delay to allow save button click to register
+              setTimeout(() => {
+                if (editingCell?.resortId === resortId && editingCell?.field === field) {
+                  saveInlineEdit();
+                }
+              }, 100);
+            }}
+            autoFocus
+            size="small"
+            placeholder={placeholder}
+            style={{ minWidth: 120 }}
+            onPressEnter={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              saveInlineEdit();
+            }}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<SaveOutlined />}
+            loading={savingCell}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              saveInlineEdit();
+            }}
+            style={{ color: '#52c41a' }}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<CloseOutlined />}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              cancelEditing();
+            }}
+            style={{ color: '#ff4d4f' }}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div
+        style={{
+          minHeight: 22,
+          padding: '2px 4px',
+          borderRadius: 4,
+          cursor: 'pointer',
+          transition: 'background-color 0.2s',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4
+        }}
+        className="editable-cell"
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          startEditing(resortId, field, value);
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.backgroundColor = '#f5f5f5';
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.backgroundColor = 'transparent';
+        }}
+      >
+        <Text style={{ color: value ? '#000' : '#999' }}>
+          {value || placeholder || 'Double-click to edit'}
+        </Text>
+        <EditOutlined style={{ fontSize: 12, color: '#999', opacity: 0.6 }} />
+      </div>
+    );
+  };
+
   const columns = [
     {
       title: "Resort",
@@ -93,7 +299,12 @@ const ResortTable = ({ data, setData }) => {
               }}
             />
           )}
-          <span>{text}</span>
+          <EditableCell
+            value={text}
+            resortId={record._id}
+            field="name"
+            placeholder="Resort name"
+          />
         </div>
       ),
     },
@@ -118,25 +329,160 @@ const ResortTable = ({ data, setData }) => {
           ? `${location.coordinates[0]}, ${location.coordinates[1]}`
           : "",
     },
-    { title: "Country", dataIndex: "country", key: "country" },
-    { title: "Province", dataIndex: "province", key: "province" },
+    { 
+      title: "Country", 
+      dataIndex: "country", 
+      key: "country",
+      render: (text, record) => (
+        <EditableCell
+          value={text}
+          resortId={record._id}
+          field="country"
+          placeholder="Country"
+        />
+      ),
+    },
+    { 
+      title: "Province", 
+      dataIndex: "province", 
+      key: "province",
+      render: (text, record) => (
+        <EditableCell
+          value={text}
+          resortId={record._id}
+          field="province"
+          placeholder="Province"
+        />
+      ),
+    },
     {
       title: "Website",
       dataIndex: "website",
       key: "website",
-      render: (website) => {
+      render: (website, record) => {
+        const isEditing = editingCell?.resortId === record._id && editingCell?.field === 'website';
+        
+                 if (isEditing) {
+           return (
+             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+               <Input
+                 value={editingValue}
+                 onChange={(e) => setEditingValue(e.target.value)}
+                 onKeyDown={handleKeyPress}
+                 onBlur={(e) => {
+                   // Small delay to allow save button click to register
+                   setTimeout(() => {
+                     if (editingCell?.resortId === record._id && editingCell?.field === 'website') {
+                       saveInlineEdit();
+                     }
+                   }, 100);
+                 }}
+                 autoFocus
+                 size="small"
+                 placeholder="https://example.com"
+                 style={{ minWidth: 200 }}
+                 onPressEnter={(e) => {
+                   e.preventDefault();
+                   e.stopPropagation();
+                   saveInlineEdit();
+                 }}
+               />
+               <Button
+                 type="text"
+                 size="small"
+                 icon={<SaveOutlined />}
+                 loading={savingCell}
+                 onClick={(e) => {
+                   e.preventDefault();
+                   e.stopPropagation();
+                   saveInlineEdit();
+                 }}
+                 style={{ color: '#52c41a' }}
+               />
+               <Button
+                 type="text"
+                 size="small"
+                 icon={<CloseOutlined />}
+                 onClick={(e) => {
+                   e.preventDefault();
+                   e.stopPropagation();
+                   cancelEditing();
+                 }}
+                 style={{ color: '#ff4d4f' }}
+               />
+             </div>
+           );
+         }
+
         if (!website) {
-          return <span style={{ color: '#999' }}>No website</span>;
+          return (
+            <div
+              style={{
+                minHeight: 22,
+                padding: '2px 4px',
+                borderRadius: 4,
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                color: '#999'
+              }}
+              className="editable-cell"
+              onDoubleClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                startEditing(record._id, 'website', website);
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#f5f5f5';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'transparent';
+              }}
+            >
+              <span>Double-click to add website</span>
+              <EditOutlined style={{ fontSize: 12, color: '#999', opacity: 0.6 }} />
+            </div>
+          );
         }
+        
         return (
-          <a 
-            href={website} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{ color: '#1890ff' }}
+          <div
+            style={{
+              minHeight: 22,
+              padding: '2px 4px',
+              borderRadius: 4,
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+            className="editable-cell"
+            onDoubleClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              startEditing(record._id, 'website', website);
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'transparent';
+            }}
           >
-            Visit Website
-          </a>
+            <a 
+              href={website} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: '#1890ff' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Visit Website
+            </a>
+            <EditOutlined style={{ fontSize: 12, color: '#999', opacity: 0.6 }} />
+          </div>
         );
       },
     },
@@ -144,8 +490,28 @@ const ResortTable = ({ data, setData }) => {
       title: "Skiable Terrain",
       dataIndex: "skiable_terrain",
       key: "skiable_terrain",
+      render: (text, record) => (
+        <EditableCell
+          value={text}
+          resortId={record._id}
+          field="skiable_terrain"
+          placeholder="Skiable terrain"
+        />
+      ),
     },
-    { title: "Longest Run", dataIndex: "longestRun", key: "longestRun" },
+    { 
+      title: "Longest Run", 
+      dataIndex: "longestRun", 
+      key: "longestRun",
+      render: (text, record) => (
+        <EditableCell
+          value={text}
+          resortId={record._id}
+          field="longestRun"
+          placeholder="Longest run"
+        />
+      ),
+    },
     {
       title: "Runs",
       dataIndex: "runs",
@@ -160,8 +526,28 @@ const ResortTable = ({ data, setData }) => {
       title: "Base Elevation",
       dataIndex: "baseElevation",
       key: "baseElevation",
+      render: (text, record) => (
+        <EditableCell
+          value={text}
+          resortId={record._id}
+          field="baseElevation"
+          placeholder="Base elevation"
+        />
+      ),
     },
-    { title: "Top Elevation", dataIndex: "topElevation", key: "topElevation" },
+    { 
+      title: "Top Elevation", 
+      dataIndex: "topElevation", 
+      key: "topElevation",
+      render: (text, record) => (
+        <EditableCell
+          value={text}
+          resortId={record._id}
+          field="topElevation"
+          placeholder="Top elevation"
+        />
+      ),
+    },
     {
       title: "Lifts",
       dataIndex: "lifts",
