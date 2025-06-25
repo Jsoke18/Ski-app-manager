@@ -28,6 +28,11 @@ const ResortTable = ({ data, setData }) => {
   const [provinceFilter, setProvinceFilter] = useState("");
   const [skiPassFilter, setSkiPassFilter] = useState(""); // "all", "with", "without"
   const [websiteFilter, setWebsiteFilter] = useState(""); // "all", "with", "without"
+  
+  // New data quality filters
+  const [liftsFilter, setLiftsFilter] = useState(""); // "all", "minimal", "complete"
+  const [runsFilter, setRunsFilter] = useState(""); // "all", "minimal", "complete"
+  const [longestRunFilter, setLongestRunFilter] = useState(""); // "all", "missing", "complete"
 
   // Extract unique values for filter dropdowns with counts
   const uniqueCountries = useMemo(() => {
@@ -94,9 +99,28 @@ const ResortTable = ({ data, setData }) => {
         (websiteFilter === "with" && resort.website && resort.website.trim() !== "") ||
         (websiteFilter === "without" && (!resort.website || resort.website.trim() === ""));
 
-      return searchMatch && countryMatch && provinceMatch && skiPassMatch && websiteMatch;
+      // Lifts filter
+      const totalLifts = resort.lifts?.total || 0;
+      const liftsMatch = !liftsFilter ||
+        (liftsFilter === "minimal" && totalLifts <= 1) ||
+        (liftsFilter === "complete" && totalLifts > 1);
+
+      // Runs filter
+      const totalRuns = resort.runs?.total || 0;
+      const runsMatch = !runsFilter ||
+        (runsFilter === "minimal" && totalRuns <= 1) ||
+        (runsFilter === "complete" && totalRuns > 1);
+
+      // Longest run filter
+      const longestRunMatch = !longestRunFilter ||
+        (longestRunFilter === "missing" && (!resort.longestRun || resort.longestRun.trim() === "")) ||
+        (longestRunFilter === "complete" && resort.longestRun && resort.longestRun.trim() !== "");
+
+      return searchMatch && countryMatch && provinceMatch && skiPassMatch && websiteMatch && 
+             liftsMatch && runsMatch && longestRunMatch;
     });
-  }, [data, searchText, countryFilter, provinceFilter, skiPassFilter, websiteFilter]);
+  }, [data, searchText, countryFilter, provinceFilter, skiPassFilter, websiteFilter, 
+      liftsFilter, runsFilter, longestRunFilter]);
 
   // Clear all filters
   const clearAllFilters = () => {
@@ -105,6 +129,9 @@ const ResortTable = ({ data, setData }) => {
     setProvinceFilter("");
     setSkiPassFilter("");
     setWebsiteFilter("");
+    setLiftsFilter("");
+    setRunsFilter("");
+    setLongestRunFilter("");
   };
 
   // Inline editing functions
@@ -931,13 +958,64 @@ const ResortTable = ({ data, setData }) => {
             </Space>
           </Col>
 
+          <Divider type="vertical" style={{ height: 50 }} />
+
+          {/* Data Quality Filters */}
+          <Col>
+            <Space direction="vertical" size={6}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#666' }}>📊 Data Quality</span>
+              <Space size={8} wrap>
+                <Button
+                  size="small"
+                  type={liftsFilter === "minimal" ? "primary" : "default"}
+                  onClick={() => setLiftsFilter(liftsFilter === "minimal" ? "" : "minimal")}
+                  style={{ 
+                    borderRadius: 6,
+                    backgroundColor: liftsFilter === "minimal" ? "#faad14" : undefined,
+                    borderColor: liftsFilter === "minimal" ? "#faad14" : undefined,
+                    fontSize: 11
+                  }}
+                >
+                  Lifts ≤ 1
+                </Button>
+                <Button
+                  size="small"
+                  type={runsFilter === "minimal" ? "primary" : "default"}
+                  onClick={() => setRunsFilter(runsFilter === "minimal" ? "" : "minimal")}
+                  style={{ 
+                    borderRadius: 6,
+                    backgroundColor: runsFilter === "minimal" ? "#faad14" : undefined,
+                    borderColor: runsFilter === "minimal" ? "#faad14" : undefined,
+                    fontSize: 11
+                  }}
+                >
+                  Runs ≤ 1
+                </Button>
+                <Button
+                  size="small"
+                  type={longestRunFilter === "missing" ? "primary" : "default"}
+                  onClick={() => setLongestRunFilter(longestRunFilter === "missing" ? "" : "missing")}
+                  style={{ 
+                    borderRadius: 6,
+                    backgroundColor: longestRunFilter === "missing" ? "#ff4d4f" : undefined,
+                    borderColor: longestRunFilter === "missing" ? "#ff4d4f" : undefined,
+                    fontSize: 11
+                  }}
+                >
+                  No Longest Run
+                </Button>
+              </Space>
+            </Space>
+          </Col>
+
           {/* Clear and results */}
           <Col flex="auto" style={{ textAlign: 'right' }}>
             <Space direction="vertical" size={6} style={{ alignItems: 'flex-end' }}>
               <div style={{ fontSize: 14, color: '#666', fontWeight: 500 }}>
                 <strong style={{ color: '#1890ff' }}>{filteredData.length}</strong> of <strong>{data.length}</strong> resorts
               </div>
-              {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter) && (
+              {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter || 
+                liftsFilter || runsFilter || longestRunFilter) && (
                 <Button 
                   size="small"
                   icon={<ClearOutlined />}
@@ -953,7 +1031,8 @@ const ResortTable = ({ data, setData }) => {
         </Row>
 
         {/* Active filters summary */}
-        {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter) && (
+        {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter ||
+          liftsFilter || runsFilter || longestRunFilter) && (
           <Row style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
             <Col span={24}>
               <Space wrap size={6}>
@@ -965,6 +1044,9 @@ const ResortTable = ({ data, setData }) => {
                 {skiPassFilter === "without" && <Tag size="small" color="red" closable onClose={() => setSkiPassFilter("")}>No Ski Passes</Tag>}
                 {websiteFilter === "with" && <Tag size="small" color="blue" closable onClose={() => setWebsiteFilter("")}>Has Website</Tag>}
                 {websiteFilter === "without" && <Tag size="small" color="red" closable onClose={() => setWebsiteFilter("")}>No Website</Tag>}
+                {liftsFilter === "minimal" && <Tag size="small" color="orange" closable onClose={() => setLiftsFilter("")}>Lifts ≤ 1</Tag>}
+                {runsFilter === "minimal" && <Tag size="small" color="orange" closable onClose={() => setRunsFilter("")}>Runs ≤ 1</Tag>}
+                {longestRunFilter === "missing" && <Tag size="small" color="volcano" closable onClose={() => setLongestRunFilter("")}>Missing Longest Run</Tag>}
               </Space>
             </Col>
           </Row>
