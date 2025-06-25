@@ -397,7 +397,7 @@ const ResortTable = ({ data, setData }) => {
       ),
     },
     { 
-      title: "Province", 
+      title: "Province/State", 
       dataIndex: "province", 
       key: "province",
       render: (text, record) => (
@@ -405,7 +405,7 @@ const ResortTable = ({ data, setData }) => {
           value={text}
           resortId={record._id}
           field="province"
-          placeholder="Province"
+          placeholder="Province/State"
         />
       ),
     },
