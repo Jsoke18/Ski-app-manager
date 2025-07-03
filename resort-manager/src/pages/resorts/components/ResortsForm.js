@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Form, Input, Button, Upload, Select, InputNumber, Card, Row, Col, Collapse, Space, Affix } from "antd";
-import { InboxOutlined, UploadOutlined, SaveOutlined, EnvironmentOutlined, InfoCircleOutlined, AreaChartOutlined, CameraOutlined } from "@ant-design/icons";
+import { Form, Input, Button, Upload, Select, InputNumber, Card, Row, Col, Collapse, Space, Affix, Switch } from "antd";
+import { InboxOutlined, UploadOutlined, SaveOutlined, EnvironmentOutlined, InfoCircleOutlined, AreaChartOutlined, CameraOutlined, FlagOutlined } from "@ant-design/icons";
 import { uploadImageToGCS } from "../../../services/GoogleBucketService";
 import { fetchSkiPasses } from "../../../services/skiPassService";
 
@@ -116,6 +116,7 @@ const ResortForm = ({
       formData.append("baseElevation", values.baseElevation || "");
       formData.append("topElevation", values.topElevation || "");
       formData.append("notes", values.notes || "");
+      formData.append("flagged", values.flagged || false);
       formData.append("runs", JSON.stringify(values.runs || { open: 0, total: 0 }));
       formData.append("terrainParks", values.terrainParks || "");
       formData.append("lifts", JSON.stringify(values.lifts || { open: 0, total: 0 }));
@@ -295,6 +296,20 @@ const ResortForm = ({
               <Col xs={24}>
                 <Form.Item name="notes" label="Notes">
                   <Input.TextArea rows={3} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Form.Item 
+                  name="flagged" 
+                  label="Flag Status" 
+                  valuePropName="checked"
+                  tooltip="Flag this resort for special attention or review"
+                >
+                  <Switch 
+                    checkedChildren={<FlagOutlined />}
+                    unCheckedChildren="Normal"
+                    style={{ backgroundColor: form.getFieldValue('flagged') ? '#ff4d4f' : undefined }}
+                  />
                 </Form.Item>
               </Col>
             </Row>

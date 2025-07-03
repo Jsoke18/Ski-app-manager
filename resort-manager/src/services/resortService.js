@@ -79,3 +79,40 @@ export const deleteResort = async (resortId) => {
     throw error;
   }
 };
+
+// New flagging API endpoints
+export const fetchFlaggedResorts = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/resorts/flagged`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching flagged resorts:', error);
+    throw error;
+  }
+};
+
+export const getResortFlagStatus = async (resortId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/resorts/${resortId}/flag`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting resort flag status:', error);
+    throw error;
+  }
+};
+
+export const setResortFlagStatus = async (resortId, flagged) => {
+  try {
+    const response = await axios.put(`${API_BASE_URL}/resorts/${resortId}/flag`, {
+      flagged: flagged
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error setting resort flag status:', error);
+    throw error;
+  }
+};

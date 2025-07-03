@@ -1,12 +1,15 @@
 import React, { useState, useEffect, props, useMemo } from "react";
-import { Table, Button, Modal, message, Input, Select, Row, Col, Card, Space, Tag, Switch, Divider, Typography } from "antd";
-import { SearchOutlined, FilterOutlined, ClearOutlined, CheckOutlined, CloseOutlined, EditOutlined, SaveOutlined } from "@ant-design/icons";
+import { Table, Button, Modal, message, Input, Select, Row, Col, Card, Space, Tag, Switch, Divider, Typography, Affix, Badge } from "antd";
+import { SearchOutlined, FilterOutlined, ClearOutlined, CheckOutlined, CloseOutlined, EditOutlined, SaveOutlined, FlagOutlined, FlagFilled, UndoOutlined } from "@ant-design/icons";
 import ResortForm from "./ResortsForm";
 import {
   fetchResorts,
   addResort,
   updateResort,
   deleteResort,
+  fetchFlaggedResorts,
+  getResortFlagStatus,
+  setResortFlagStatus,
 } from "../../../services/resortService";
 
 const { Option } = Select;
@@ -22,12 +25,17 @@ const ResortTable = ({ data, setData }) => {
   const [editingValue, setEditingValue] = useState("");
   const [savingCell, setSavingCell] = useState(false);
   
+  // Pending changes system
+  const [pendingChanges, setPendingChanges] = useState({}); // { resortId: { field: value, field2: value2 } }
+  const [isSavingBatch, setIsSavingBatch] = useState(false);
+  
   // Filter states
   const [searchText, setSearchText] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
   const [skiPassFilter, setSkiPassFilter] = useState(""); // "all", "with", "without"
   const [websiteFilter, setWebsiteFilter] = useState(""); // "all", "with", "without"
+  const [flaggedFilter, setFlaggedFilter] = useState(""); // "all", "flagged", "unflagged"
   
   // New data quality filters
   const [liftsFilter, setLiftsFilter] = useState(""); // "all", "minimal", "complete"
@@ -99,6 +107,11 @@ const ResortTable = ({ data, setData }) => {
         (websiteFilter === "with" && resort.website && resort.website.trim() !== "") ||
         (websiteFilter === "without" && (!resort.website || resort.website.trim() === ""));
 
+      // Flagged filter
+      const flaggedMatch = !flaggedFilter ||
+        (flaggedFilter === "flagged" && resort.flagged === true) ||
+        (flaggedFilter === "unflagged" && resort.flagged !== true);
+
       // Lifts filter
       const totalLifts = resort.lifts?.total || 0;
       const liftsMatch = !liftsFilter ||
@@ -117,10 +130,10 @@ const ResortTable = ({ data, setData }) => {
         (longestRunFilter === "complete" && resort.longestRun && resort.longestRun.trim() !== "");
 
       return searchMatch && countryMatch && provinceMatch && skiPassMatch && websiteMatch && 
-             liftsMatch && runsMatch && longestRunMatch;
+             flaggedMatch && liftsMatch && runsMatch && longestRunMatch;
     });
   }, [data, searchText, countryFilter, provinceFilter, skiPassFilter, websiteFilter, 
-      liftsFilter, runsFilter, longestRunFilter]);
+      flaggedFilter, liftsFilter, runsFilter, longestRunFilter]);
 
   // Clear all filters
   const clearAllFilters = () => {
@@ -129,9 +142,148 @@ const ResortTable = ({ data, setData }) => {
     setProvinceFilter("");
     setSkiPassFilter("");
     setWebsiteFilter("");
+    setFlaggedFilter("");
     setLiftsFilter("");
     setRunsFilter("");
     setLongestRunFilter("");
+  };
+
+  // Pending changes functions
+  const addPendingChange = (resortId, field, value) => {
+    setPendingChanges(prev => ({
+      ...prev,
+      [resortId]: {
+        ...prev[resortId],
+        [field]: value
+      }
+    }));
+  };
+
+  const removePendingChange = (resortId, field) => {
+    setPendingChanges(prev => {
+      const updated = { ...prev };
+      if (updated[resortId]) {
+        delete updated[resortId][field];
+        if (Object.keys(updated[resortId]).length === 0) {
+          delete updated[resortId];
+        }
+      }
+      return updated;
+    });
+  };
+
+  const discardAllChanges = () => {
+    setPendingChanges({});
+    message.info("All pending changes discarded");
+  };
+
+  const getPendingChangesCount = () => {
+    return Object.values(pendingChanges).reduce((total, changes) => 
+      total + Object.keys(changes).length, 0
+    );
+  };
+
+  // Flag handling function - now adds to pending changes
+  const handleFlagToggle = (resortId, currentFlagStatus) => {
+    const newFlagStatus = !currentFlagStatus;
+    addPendingChange(resortId, 'flagged', newFlagStatus);
+  };
+
+  // Save all pending changes
+  const saveAllChanges = async () => {
+    if (Object.keys(pendingChanges).length === 0) return;
+
+    setIsSavingBatch(true);
+    const successfulUpdates = [];
+    const failedUpdates = [];
+
+    try {
+      for (const [resortId, changes] of Object.entries(pendingChanges)) {
+        try {
+          const resort = data.find(r => r._id === resortId);
+          if (!resort) {
+            failedUpdates.push({ resortId, error: 'Resort not found' });
+            continue;
+          }
+
+          // Create FormData object for the update
+          const formData = new FormData();
+          
+          // Add all existing fields to maintain data integrity
+          formData.append("_id", resort._id);
+          formData.append("name", changes.name !== undefined ? changes.name : (resort.name || ""));
+          formData.append("province", changes.province !== undefined ? changes.province : (resort.province || ""));
+          formData.append("country", changes.country !== undefined ? changes.country : (resort.country || ""));
+          formData.append("website", changes.website !== undefined ? changes.website : (resort.website || ""));
+          formData.append("information", resort.information || "");
+          formData.append("longestRun", changes.longestRun !== undefined ? changes.longestRun : (resort.longestRun || ""));
+          formData.append("baseElevation", changes.baseElevation !== undefined ? changes.baseElevation : (resort.baseElevation || ""));
+          formData.append("topElevation", changes.topElevation !== undefined ? changes.topElevation : (resort.topElevation || ""));
+          formData.append("notes", resort.notes || "");
+          formData.append("flagged", changes.flagged !== undefined ? changes.flagged : (resort.flagged || false));
+          formData.append("runs", JSON.stringify(resort.runs || { open: 0, total: 0 }));
+          formData.append("terrainParks", resort.terrainParks || "");
+          formData.append("lifts", JSON.stringify(resort.lifts || { open: 0, total: 0 }));
+          formData.append("gondolas", resort.gondolas || "");
+          formData.append("skiable_terrain", changes.skiable_terrain !== undefined ? changes.skiable_terrain : (resort.skiable_terrain || ""));
+          formData.append("snowCats", resort.snowCats || "");
+          formData.append("helicopters", resort.helicopters || "");
+          formData.append("mapboxVector", resort.mapboxVectorUrl || "");
+          
+          if (resort.skiPasses && resort.skiPasses.length > 0) {
+            formData.append("skiPasses", JSON.stringify(resort.skiPasses));
+          }
+
+          if (resort.location) {
+            formData.append("location", JSON.stringify(resort.location));
+          }
+
+          // Call the update API
+          const response = await updateResort(formData);
+          
+          if (response && response.data) {
+            successfulUpdates.push({ resortId, changes });
+          } else {
+            failedUpdates.push({ resortId, error: 'Update failed' });
+          }
+        } catch (error) {
+          console.error(`Error updating resort ${resortId}:`, error);
+          failedUpdates.push({ resortId, error: error.message });
+        }
+      }
+
+      // Update local data for successful updates
+      if (successfulUpdates.length > 0) {
+        setData(prevData => 
+          prevData.map(resort => {
+            const update = successfulUpdates.find(u => u.resortId === resort._id);
+            if (update) {
+              return { ...resort, ...update.changes };
+            }
+            return resort;
+          })
+        );
+      }
+
+      // Clear successful changes from pending
+      const updatedPendingChanges = { ...pendingChanges };
+      successfulUpdates.forEach(({ resortId }) => {
+        delete updatedPendingChanges[resortId];
+      });
+      setPendingChanges(updatedPendingChanges);
+
+      // Show results
+      if (successfulUpdates.length > 0) {
+        message.success(`Successfully updated ${successfulUpdates.length} resort${successfulUpdates.length > 1 ? 's' : ''}`);
+      }
+      
+      if (failedUpdates.length > 0) {
+        message.error(`Failed to update ${failedUpdates.length} resort${failedUpdates.length > 1 ? 's' : ''}`);
+      }
+
+    } finally {
+      setIsSavingBatch(false);
+    }
   };
 
   // Inline editing functions
@@ -170,6 +322,7 @@ const ResortTable = ({ data, setData }) => {
       formData.append("baseElevation", editingCell.field === 'baseElevation' ? editingValue : (resort.baseElevation || ""));
       formData.append("topElevation", editingCell.field === 'topElevation' ? editingValue : (resort.topElevation || ""));
       formData.append("notes", resort.notes || "");
+      formData.append("flagged", resort.flagged || false);
       formData.append("runs", JSON.stringify(resort.runs || { open: 0, total: 0 }));
       formData.append("terrainParks", resort.terrainParks || "");
       formData.append("lifts", JSON.stringify(resort.lifts || { open: 0, total: 0 }));
@@ -648,6 +801,24 @@ const ResortTable = ({ data, setData }) => {
       },
     },
     {
+      title: "Flag",
+      key: "flagged",
+      width: 80,
+      render: (text, record) => (
+        <Button
+          type="text"
+          icon={record.flagged ? <FlagFilled style={{ color: '#ff4d4f' }} /> : <FlagOutlined />}
+          onClick={() => handleFlagToggle(record._id, record.flagged)}
+          title={record.flagged ? 'Unflag resort' : 'Flag resort'}
+          style={{
+            color: record.flagged ? '#ff4d4f' : '#8c8c8c',
+            border: 'none',
+            padding: '4px 8px'
+          }}
+        />
+      ),
+    },
+    {
       title: "Actions",
       key: "actions",
       render: (text, record) => (
@@ -960,6 +1131,43 @@ const ResortTable = ({ data, setData }) => {
 
           <Divider type="vertical" style={{ height: 50 }} />
 
+          {/* Flag toggles */}
+          <Col>
+            <Space direction="vertical" size={6}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#666' }}>🚩 Flag Status</span>
+              <Space size={12}>
+                <Button
+                  size="small"
+                  type={flaggedFilter === "flagged" ? "primary" : "default"}
+                  icon={flaggedFilter === "flagged" ? <FlagFilled /> : null}
+                  onClick={() => setFlaggedFilter(flaggedFilter === "flagged" ? "" : "flagged")}
+                  style={{ 
+                    borderRadius: 6,
+                    backgroundColor: flaggedFilter === "flagged" ? "#ff4d4f" : undefined,
+                    borderColor: flaggedFilter === "flagged" ? "#ff4d4f" : undefined
+                  }}
+                >
+                  Flagged
+                </Button>
+                <Button
+                  size="small"
+                  type={flaggedFilter === "unflagged" ? "primary" : "default"}
+                  icon={flaggedFilter === "unflagged" ? <CheckOutlined /> : null}
+                  onClick={() => setFlaggedFilter(flaggedFilter === "unflagged" ? "" : "unflagged")}
+                  style={{ 
+                    borderRadius: 6,
+                    backgroundColor: flaggedFilter === "unflagged" ? "#52c41a" : undefined,
+                    borderColor: flaggedFilter === "unflagged" ? "#52c41a" : undefined
+                  }}
+                >
+                  Unflagged
+                </Button>
+              </Space>
+            </Space>
+          </Col>
+
+          <Divider type="vertical" style={{ height: 50 }} />
+
           {/* Data Quality Filters */}
           <Col>
             <Space direction="vertical" size={6}>
@@ -1015,7 +1223,7 @@ const ResortTable = ({ data, setData }) => {
                 <strong style={{ color: '#1890ff' }}>{filteredData.length}</strong> of <strong>{data.length}</strong> resorts
               </div>
               {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter || 
-                liftsFilter || runsFilter || longestRunFilter) && (
+                flaggedFilter || liftsFilter || runsFilter || longestRunFilter) && (
                 <Button 
                   size="small"
                   icon={<ClearOutlined />}
@@ -1032,7 +1240,7 @@ const ResortTable = ({ data, setData }) => {
 
         {/* Active filters summary */}
         {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter ||
-          liftsFilter || runsFilter || longestRunFilter) && (
+          flaggedFilter || liftsFilter || runsFilter || longestRunFilter) && (
           <Row style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
             <Col span={24}>
               <Space wrap size={6}>
@@ -1044,6 +1252,8 @@ const ResortTable = ({ data, setData }) => {
                 {skiPassFilter === "without" && <Tag size="small" color="red" closable onClose={() => setSkiPassFilter("")}>No Ski Passes</Tag>}
                 {websiteFilter === "with" && <Tag size="small" color="blue" closable onClose={() => setWebsiteFilter("")}>Has Website</Tag>}
                 {websiteFilter === "without" && <Tag size="small" color="red" closable onClose={() => setWebsiteFilter("")}>No Website</Tag>}
+                {flaggedFilter === "flagged" && <Tag size="small" color="red" closable onClose={() => setFlaggedFilter("")}>Flagged</Tag>}
+                {flaggedFilter === "unflagged" && <Tag size="small" color="green" closable onClose={() => setFlaggedFilter("")}>Unflagged</Tag>}
                 {liftsFilter === "minimal" && <Tag size="small" color="orange" closable onClose={() => setLiftsFilter("")}>Lifts ≤ 1</Tag>}
                 {runsFilter === "minimal" && <Tag size="small" color="orange" closable onClose={() => setRunsFilter("")}>Runs ≤ 1</Tag>}
                 {longestRunFilter === "missing" && <Tag size="small" color="volcano" closable onClose={() => setLongestRunFilter("")}>Missing Longest Run</Tag>}
