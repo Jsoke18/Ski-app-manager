@@ -1,6 +1,6 @@
 import React, { useState, useEffect, props, useMemo } from "react";
-import { Table, Button, Modal, message, Input, Select, Row, Col, Card, Space, Tag, Switch, Divider, Typography, Affix, Badge } from "antd";
-import { SearchOutlined, FilterOutlined, ClearOutlined, CheckOutlined, CloseOutlined, EditOutlined, SaveOutlined, FlagOutlined, FlagFilled, UndoOutlined } from "@ant-design/icons";
+import { Table, Button, Modal, message, Input, Select, Row, Col, Card, Space, Tag, Switch, Divider, Typography, Affix, Badge, Tooltip } from "antd";
+import { SearchOutlined, FilterOutlined, ClearOutlined, CheckOutlined, CloseOutlined, EditOutlined, SaveOutlined, FlagOutlined, FlagFilled, UndoOutlined, CopyOutlined } from "@ant-design/icons";
 import ResortForm from "./ResortsForm";
 import {
   fetchResorts,
@@ -157,6 +157,23 @@ const ResortTable = ({ data, setData }) => {
     setLiftsFilter("");
     setRunsFilter("");
     setLongestRunFilter("");
+  };
+
+  // Copy to clipboard function
+  const copyToClipboard = async (text, label = 'Text') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      message.success(`${label} copied to clipboard!`);
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      message.success(`${label} copied to clipboard!`);
+    }
   };
 
   // Pending changes functions
@@ -432,28 +449,61 @@ const ResortTable = ({ data, setData }) => {
       title: "Resort",
       dataIndex: "name",
       key: "name",
-      render: (text, record) => (
-        <div style={{ display: "flex", alignItems: "center" }}>
-          {record.imageUrl && (
-            <img
-              src={record.imageUrl}
-              alt={record.name}
-              style={{
-                width: 50,
-                height: 50,
-                marginRight: 8,
-                objectFit: "cover",
-              }}
-            />
-          )}
-          <EditableCell
-            value={text}
-            resortId={record._id}
-            field="name"
-            placeholder="Resort name"
-          />
-        </div>
-      ),
+      render: (text, record) => {
+        const hasPendingChange = pendingChanges[record._id]?.name !== undefined;
+        const displayName = hasPendingChange ? pendingChanges[record._id].name : text;
+        
+        return (
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {record.imageUrl && (
+              <img
+                src={record.imageUrl}
+                alt={record.name}
+                style={{
+                  width: 50,
+                  height: 50,
+                  marginRight: 8,
+                  objectFit: "cover",
+                }}
+              />
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+              <EditableCell
+                value={text}
+                resortId={record._id}
+                field="name"
+                placeholder="Resort name"
+              />
+              {displayName && (
+                <Tooltip title="Copy resort name">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CopyOutlined />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      copyToClipboard(displayName, 'Resort name');
+                    }}
+                    style={{
+                      opacity: 0.6,
+                      transition: 'opacity 0.2s',
+                      padding: '2px 4px',
+                      height: 'auto',
+                      minWidth: 'auto'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.opacity = 1;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.opacity = 0.6;
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </div>
+          </div>
+        );
+      },
     },
     {
       title: "GeoJSON Data",
