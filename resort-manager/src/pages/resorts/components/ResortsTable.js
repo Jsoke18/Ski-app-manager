@@ -80,9 +80,20 @@ const ResortTable = ({ data, setData }) => {
       }));
   }, [data, countryFilter]);
 
+  // Apply pending changes to data for display
+  const dataWithPendingChanges = useMemo(() => {
+    return data.map(resort => {
+      const changes = pendingChanges[resort._id];
+      if (changes) {
+        return { ...resort, ...changes };
+      }
+      return resort;
+    });
+  }, [data, pendingChanges]);
+
   // Filter the data based on all filter criteria
   const filteredData = useMemo(() => {
-    return data.filter(resort => {
+    return dataWithPendingChanges.filter(resort => {
       // Search text filter (searches name, country, province, information)
       const searchMatch = !searchText || 
         resort.name?.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -132,7 +143,7 @@ const ResortTable = ({ data, setData }) => {
       return searchMatch && countryMatch && provinceMatch && skiPassMatch && websiteMatch && 
              flaggedMatch && liftsMatch && runsMatch && longestRunMatch;
     });
-  }, [data, searchText, countryFilter, provinceFilter, skiPassFilter, websiteFilter, 
+  }, [dataWithPendingChanges, searchText, countryFilter, provinceFilter, skiPassFilter, websiteFilter, 
       flaggedFilter, liftsFilter, runsFilter, longestRunFilter]);
 
   // Clear all filters
@@ -297,93 +308,12 @@ const ResortTable = ({ data, setData }) => {
     setEditingValue("");
   };
 
-  const saveInlineEdit = async () => {
+  const saveInlineEdit = () => {
     if (!editingCell) return;
     
-    setSavingCell(true);
-    try {
-      const resort = data.find(r => r._id === editingCell.resortId);
-      if (!resort) {
-        message.error("Resort not found");
-        return;
-      }
-
-      // Create FormData object for the update (matching the existing API structure)
-      const formData = new FormData();
-      
-      // Add all existing fields to maintain data integrity
-      formData.append("_id", resort._id);
-      formData.append("name", editingCell.field === 'name' ? editingValue : (resort.name || ""));
-      formData.append("province", editingCell.field === 'province' ? editingValue : (resort.province || ""));
-      formData.append("country", editingCell.field === 'country' ? editingValue : (resort.country || ""));
-      formData.append("website", editingCell.field === 'website' ? editingValue : (resort.website || ""));
-      formData.append("information", resort.information || "");
-      formData.append("longestRun", editingCell.field === 'longestRun' ? editingValue : (resort.longestRun || ""));
-      formData.append("baseElevation", editingCell.field === 'baseElevation' ? editingValue : (resort.baseElevation || ""));
-      formData.append("topElevation", editingCell.field === 'topElevation' ? editingValue : (resort.topElevation || ""));
-      formData.append("notes", resort.notes || "");
-      formData.append("flagged", resort.flagged || false);
-      formData.append("runs", JSON.stringify(resort.runs || { open: 0, total: 0 }));
-      formData.append("terrainParks", resort.terrainParks || "");
-      formData.append("lifts", JSON.stringify(resort.lifts || { open: 0, total: 0 }));
-      formData.append("gondolas", resort.gondolas || "");
-      formData.append("skiable_terrain", editingCell.field === 'skiable_terrain' ? editingValue : (resort.skiable_terrain || ""));
-      formData.append("snowCats", resort.snowCats || "");
-      formData.append("helicopters", resort.helicopters || "");
-      formData.append("mapboxVector", resort.mapboxVectorUrl || "");
-      
-      // Add ski passes if they exist
-      if (resort.skiPasses && resort.skiPasses.length > 0) {
-        const skiPassIds = resort.skiPasses.map(pass => 
-          typeof pass === 'object' ? pass._id : pass
-        );
-        formData.append("skiPasses", JSON.stringify(skiPassIds));
-      }
-      
-      // Add location if it exists
-      if (resort.location) {
-        formData.append("location", JSON.stringify(resort.location));
-      }
-      
-      // Preserve existing image if it exists
-      if (resort.imageUrl) {
-        formData.append("existingImageUrl", resort.imageUrl);
-      }
-
-      console.log(`Updating ${editingCell.field} to: "${editingValue}"`);
-      console.log("FormData entries:");
-      for (const [key, value] of formData.entries()) {
-        console.log(`${key}: ${value}`);
-      }
-
-      // Call the update API
-      const response = await updateResort(formData);
-      
-      if (response && response.data) {
-        // Update the local data
-        setData(prevData => 
-          prevData.map(r => 
-            r._id === editingCell.resortId 
-              ? { ...r, [editingCell.field]: editingValue }
-              : r
-          )
-        );
-        
-        message.success(`${editingCell.field.charAt(0).toUpperCase() + editingCell.field.slice(1)} updated successfully`);
-        cancelEditing();
-      } else {
-        message.error("Failed to update resort");
-      }
-    } catch (error) {
-      console.error("Error updating resort:", error);
-      if (error.response && error.response.data && error.response.data.error) {
-        message.error(`Failed to update: ${error.response.data.error}`);
-      } else {
-        message.error("Failed to update resort");
-      }
-    } finally {
-      setSavingCell(false);
-    }
+    // Add to pending changes instead of saving immediately
+    addPendingChange(editingCell.resortId, editingCell.field, editingValue);
+    cancelEditing();
   };
 
   const handleKeyPress = (e) => {
@@ -401,6 +331,8 @@ const ResortTable = ({ data, setData }) => {
   // Inline editable cell component
   const EditableCell = ({ value, resortId, field, placeholder, type = "text" }) => {
     const isEditing = editingCell?.resortId === resortId && editingCell?.field === field;
+    const hasPendingChange = pendingChanges[resortId]?.[field] !== undefined;
+    const displayValue = hasPendingChange ? pendingChanges[resortId][field] : value;
     
     if (isEditing) {
       return (
@@ -431,7 +363,6 @@ const ResortTable = ({ data, setData }) => {
             type="text"
             size="small"
             icon={<SaveOutlined />}
-            loading={savingCell}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -464,25 +395,34 @@ const ResortTable = ({ data, setData }) => {
           transition: 'background-color 0.2s',
           display: 'flex',
           alignItems: 'center',
-          gap: 4
+          gap: 4,
+          backgroundColor: hasPendingChange ? '#fff7e6' : 'transparent',
+          border: hasPendingChange ? '1px solid #ffd591' : 'none'
         }}
         className="editable-cell"
         onDoubleClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          startEditing(resortId, field, value);
+          startEditing(resortId, field, displayValue);
         }}
         onMouseEnter={(e) => {
-          e.target.style.backgroundColor = '#f5f5f5';
+          if (!hasPendingChange) {
+            e.target.style.backgroundColor = '#f5f5f5';
+          }
         }}
         onMouseLeave={(e) => {
-          e.target.style.backgroundColor = 'transparent';
+          if (!hasPendingChange) {
+            e.target.style.backgroundColor = 'transparent';
+          }
         }}
       >
-        <Text style={{ color: value ? '#000' : '#999' }}>
-          {value || placeholder || 'Double-click to edit'}
+        <Text style={{ color: displayValue ? '#000' : '#999', fontWeight: hasPendingChange ? 'bold' : 'normal' }}>
+          {displayValue || placeholder || 'Double-click to edit'}
         </Text>
         <EditOutlined style={{ fontSize: 12, color: '#999', opacity: 0.6 }} />
+        {hasPendingChange && (
+          <Badge dot style={{ backgroundColor: '#faad14' }} />
+        )}
       </div>
     );
   };
@@ -804,19 +744,31 @@ const ResortTable = ({ data, setData }) => {
       title: "Flag",
       key: "flagged",
       width: 80,
-      render: (text, record) => (
-        <Button
-          type="text"
-          icon={record.flagged ? <FlagFilled style={{ color: '#ff4d4f' }} /> : <FlagOutlined />}
-          onClick={() => handleFlagToggle(record._id, record.flagged)}
-          title={record.flagged ? 'Unflag resort' : 'Flag resort'}
-          style={{
-            color: record.flagged ? '#ff4d4f' : '#8c8c8c',
-            border: 'none',
-            padding: '4px 8px'
-          }}
-        />
-      ),
+      render: (text, record) => {
+        const hasPendingChange = pendingChanges[record._id]?.flagged !== undefined;
+        const currentFlagStatus = hasPendingChange ? pendingChanges[record._id].flagged : record.flagged;
+        
+        return (
+          <div style={{ position: 'relative' }}>
+            <Button
+              type="text"
+              icon={currentFlagStatus ? <FlagFilled style={{ color: '#ff4d4f' }} /> : <FlagOutlined />}
+              onClick={() => handleFlagToggle(record._id, currentFlagStatus)}
+              title={currentFlagStatus ? 'Unflag resort' : 'Flag resort'}
+              style={{
+                color: currentFlagStatus ? '#ff4d4f' : '#8c8c8c',
+                border: 'none',
+                padding: '4px 8px',
+                backgroundColor: hasPendingChange ? '#fff7e6' : 'transparent',
+                borderRadius: hasPendingChange ? '4px' : '0'
+              }}
+            />
+            {hasPendingChange && (
+              <Badge dot style={{ backgroundColor: '#faad14', position: 'absolute', top: 2, right: 2 }} />
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Actions",
@@ -1280,6 +1232,98 @@ const ResortTable = ({ data, setData }) => {
           defaultPageSize: 20,
         }}
       />
+      
+      {/* Pending Changes Controls */}
+      {getPendingChangesCount() > 0 && (
+        <Affix offsetBottom={20}>
+          <div style={{
+            background: 'linear-gradient(135deg, #fff 0%, #fafafa 100%)',
+            padding: '12px 20px',
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            border: '1px solid rgba(0, 0, 0, 0.06)',
+            backdropFilter: 'blur(8px)',
+            maxWidth: '800px',
+            margin: '0 auto',
+            position: 'relative',
+            zIndex: 1000
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #faad14 0%, #ff9c00 100%)',
+                borderRadius: '50%',
+                padding: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative'
+              }}>
+                <EditOutlined style={{ fontSize: 16, color: '#fff' }} />
+                <Badge 
+                  count={getPendingChangesCount()} 
+                  style={{ 
+                    backgroundColor: '#ff4d4f',
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    minWidth: '18px',
+                    height: '18px',
+                    lineHeight: '18px',
+                    fontSize: '11px',
+                    fontWeight: 'bold'
+                  }}
+                />
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#333', marginBottom: 2 }}>
+                  {getPendingChangesCount()} Pending Change{getPendingChangesCount() > 1 ? 's' : ''}
+                </div>
+                <div style={{ fontSize: 11, color: '#666' }}>
+                  Click Save All to commit changes to server
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button 
+                size="small"
+                icon={<UndoOutlined />}
+                onClick={discardAllChanges}
+                style={{ 
+                  borderRadius: '8px',
+                  border: '1px solid #d9d9d9',
+                  color: '#666',
+                  height: '32px',
+                  fontSize: '12px'
+                }}
+              >
+                Discard
+              </Button>
+              <Button 
+                type="primary"
+                size="small"
+                icon={<SaveOutlined />}
+                loading={isSavingBatch}
+                onClick={saveAllChanges}
+                style={{
+                  borderRadius: '8px',
+                  backgroundColor: '#52c41a',
+                  borderColor: '#52c41a',
+                  height: '32px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  boxShadow: '0 2px 4px rgba(82, 196, 26, 0.3)'
+                }}
+              >
+                Save All
+              </Button>
+            </div>
+          </div>
+        </Affix>
+      )}
+
       <Modal
         title={editingResort ? "Edit Resort" : "Add Resort"}
         visible={modalVisible}
