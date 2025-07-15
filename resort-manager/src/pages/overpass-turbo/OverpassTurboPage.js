@@ -21,13 +21,19 @@ const OverpassTurboPage = () => {
   const overpassTurboUrl = `https://overpass-turbo.eu/?Q=${encodedQuery}&C=0`;
 
   return (
-    <div style={{ width: '100%', height: 'calc(100vh - 200px)' }}>
+    <div style={{ 
+      width: '100%', 
+      height: 'calc(100vh - 64px - 70px)', // 64px for header, 70px for footer
+      margin: 0,
+      padding: 0
+    }}>
       <iframe
         src={overpassTurboUrl}
         title="Overpass Turbo"
         width="100%"
         height="100%"
         frameBorder="0"
+        style={{ border: 'none', display: 'block' }}
       />
     </div>
   );

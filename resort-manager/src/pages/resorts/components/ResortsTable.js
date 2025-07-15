@@ -40,7 +40,6 @@ const ResortTable = ({ data, setData }) => {
   // New data quality filters
   const [liftsFilter, setLiftsFilter] = useState(""); // "all", "minimal", "complete"
   const [runsFilter, setRunsFilter] = useState(""); // "all", "minimal", "complete"
-  const [longestRunFilter, setLongestRunFilter] = useState(""); // "all", "missing", "complete"
 
   // Extract unique values for filter dropdowns with counts
   const uniqueCountries = useMemo(() => {
@@ -135,16 +134,11 @@ const ResortTable = ({ data, setData }) => {
         (runsFilter === "minimal" && totalRuns <= 1) ||
         (runsFilter === "complete" && totalRuns > 1);
 
-      // Longest run filter
-      const longestRunMatch = !longestRunFilter ||
-        (longestRunFilter === "missing" && (!resort.longestRun || resort.longestRun.trim() === "")) ||
-        (longestRunFilter === "complete" && resort.longestRun && resort.longestRun.trim() !== "");
-
       return searchMatch && countryMatch && provinceMatch && skiPassMatch && websiteMatch && 
-             flaggedMatch && liftsMatch && runsMatch && longestRunMatch;
+             flaggedMatch && liftsMatch && runsMatch;
     });
   }, [dataWithPendingChanges, searchText, countryFilter, provinceFilter, skiPassFilter, websiteFilter, 
-      flaggedFilter, liftsFilter, runsFilter, longestRunFilter]);
+      flaggedFilter, liftsFilter, runsFilter]);
 
   // Clear all filters
   const clearAllFilters = () => {
@@ -156,7 +150,6 @@ const ResortTable = ({ data, setData }) => {
     setFlaggedFilter("");
     setLiftsFilter("");
     setRunsFilter("");
-    setLongestRunFilter("");
   };
 
   // Copy to clipboard function
@@ -432,8 +425,7 @@ const ResortTable = ({ data, setData }) => {
       title: "Resort",
       dataIndex: "name",
       key: "name",
-      width: 300,
-      fixed: 'left',
+      width: 250,
       render: (text, record) => {
         const hasPendingChange = pendingChanges[record._id]?.name !== undefined;
         const displayName = hasPendingChange ? pendingChanges[record._id].name : text;
@@ -527,7 +519,7 @@ const ResortTable = ({ data, setData }) => {
       title: "Country", 
       dataIndex: "country", 
       key: "country",
-      width: 160,
+      width: 120,
       render: (text, record) => (
         <EditableCell
           value={text}
@@ -541,7 +533,7 @@ const ResortTable = ({ data, setData }) => {
       title: "Province", 
       dataIndex: "province", 
       key: "province",
-      width: 160,
+      width: 120,
       render: (text, record) => (
         <EditableCell
           value={text}
@@ -555,7 +547,7 @@ const ResortTable = ({ data, setData }) => {
       title: "Website",
       dataIndex: "website",
       key: "website",
-      width: 150,
+      width: 120,
       render: (website, record) => {
         const isEditing = editingCell?.resortId === record._id && editingCell?.field === 'website';
         
@@ -658,7 +650,7 @@ const ResortTable = ({ data, setData }) => {
       title: "Skiable Terrain",
       dataIndex: "skiable_terrain",
       key: "skiable_terrain",
-      width: 150,
+      width: 120,
       render: (text, record) => (
         <EditableCell
           value={text}
@@ -668,20 +660,7 @@ const ResortTable = ({ data, setData }) => {
         />
       ),
     },
-    { 
-      title: "Longest Run", 
-      dataIndex: "longestRun", 
-      key: "longestRun",
-      width: 150,
-      render: (text, record) => (
-        <EditableCell
-          value={text}
-          resortId={record._id}
-          field="longestRun"
-          placeholder="Longest run"
-        />
-      ),
-    },
+
     {
       title: "Runs",
       dataIndex: "runs",
@@ -1188,19 +1167,7 @@ const ResortTable = ({ data, setData }) => {
                 >
                   Runs ≤ 1
                 </Button>
-                <Button
-                  size="small"
-                  type={longestRunFilter === "missing" ? "primary" : "default"}
-                  onClick={() => setLongestRunFilter(longestRunFilter === "missing" ? "" : "missing")}
-                  style={{ 
-                    borderRadius: 6,
-                    backgroundColor: longestRunFilter === "missing" ? "#ff4d4f" : undefined,
-                    borderColor: longestRunFilter === "missing" ? "#ff4d4f" : undefined,
-                    fontSize: 11
-                  }}
-                >
-                  No Longest Run
-                </Button>
+
               </Space>
             </Space>
           </Col>
@@ -1212,7 +1179,7 @@ const ResortTable = ({ data, setData }) => {
                 <strong style={{ color: '#1890ff' }}>{filteredData.length}</strong> of <strong>{data.length}</strong> resorts
               </div>
               {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter || 
-                flaggedFilter || liftsFilter || runsFilter || longestRunFilter) && (
+                flaggedFilter || liftsFilter || runsFilter) && (
                 <Button 
                   size="small"
                   icon={<ClearOutlined />}
@@ -1229,7 +1196,7 @@ const ResortTable = ({ data, setData }) => {
 
         {/* Active filters summary */}
         {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter ||
-          flaggedFilter || liftsFilter || runsFilter || longestRunFilter) && (
+          flaggedFilter || liftsFilter || runsFilter) && (
           <Row style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
             <Col span={24}>
               <Space wrap size={6}>
@@ -1245,7 +1212,7 @@ const ResortTable = ({ data, setData }) => {
                 {flaggedFilter === "unflagged" && <Tag size="small" color="green" closable onClose={() => setFlaggedFilter("")}>Unflagged</Tag>}
                 {liftsFilter === "minimal" && <Tag size="small" color="orange" closable onClose={() => setLiftsFilter("")}>Lifts ≤ 1</Tag>}
                 {runsFilter === "minimal" && <Tag size="small" color="orange" closable onClose={() => setRunsFilter("")}>Runs ≤ 1</Tag>}
-                {longestRunFilter === "missing" && <Tag size="small" color="volcano" closable onClose={() => setLongestRunFilter("")}>Missing Longest Run</Tag>}
+
               </Space>
             </Col>
           </Row>
@@ -1261,7 +1228,11 @@ const ResortTable = ({ data, setData }) => {
         dataSource={filteredData}
         rowKey="_id"
         title={tableTitle}
-        scroll={{ x: 1600 }}
+        sticky={{ 
+          offsetHeader: 64,
+          offsetScroll: 0,
+          getContainer: () => window
+        }}
         pagination={{
           showSizeChanger: true,
           showQuickJumper: true,
