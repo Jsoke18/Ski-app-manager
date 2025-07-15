@@ -353,52 +353,24 @@ const ResortTable = ({ data, setData }) => {
     
     if (isEditing) {
       return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Input
-            value={editingValue}
-            onChange={(e) => setEditingValue(e.target.value)}
-            onKeyDown={handleKeyPress}
-            onBlur={(e) => {
-              // Small delay to allow save button click to register
-              setTimeout(() => {
-                if (editingCell?.resortId === resortId && editingCell?.field === field) {
-                  saveInlineEdit();
-                }
-              }, 100);
-            }}
-            autoFocus
-            size="small"
-            placeholder={placeholder}
-            style={{ minWidth: 120 }}
-            onPressEnter={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              saveInlineEdit();
-            }}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<SaveOutlined />}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              saveInlineEdit();
-            }}
-            style={{ color: '#52c41a' }}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<CloseOutlined />}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              cancelEditing();
-            }}
-            style={{ color: '#ff4d4f' }}
-          />
-        </div>
+        <Input
+          value={editingValue}
+          onChange={(e) => setEditingValue(e.target.value)}
+          onKeyDown={handleKeyPress}
+          onBlur={(e) => {
+            // Save on blur (clicking away)
+            saveInlineEdit();
+          }}
+          autoFocus
+          size="small"
+          placeholder={placeholder}
+          style={{ width: '100%' }}
+          onPressEnter={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            saveInlineEdit();
+          }}
+        />
       );
     }
 
@@ -433,7 +405,18 @@ const ResortTable = ({ data, setData }) => {
           }
         }}
       >
-        <Text style={{ color: displayValue ? '#000' : '#999', fontWeight: hasPendingChange ? 'bold' : 'normal' }}>
+        <Text 
+          style={{ 
+            color: displayValue ? '#000' : '#999', 
+            fontWeight: hasPendingChange ? 'bold' : 'normal',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: 'block',
+            width: '100%'
+          }}
+          title={displayValue || placeholder || 'Double-click to edit'}
+        >
           {displayValue || placeholder || 'Double-click to edit'}
         </Text>
         <EditOutlined style={{ fontSize: 12, color: '#999', opacity: 0.6 }} />
@@ -449,31 +432,37 @@ const ResortTable = ({ data, setData }) => {
       title: "Resort",
       dataIndex: "name",
       key: "name",
+      width: 300,
+      fixed: 'left',
       render: (text, record) => {
         const hasPendingChange = pendingChanges[record._id]?.name !== undefined;
         const displayName = hasPendingChange ? pendingChanges[record._id].name : text;
         
         return (
-          <div style={{ display: "flex", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", minWidth: 180 }}>
             {record.imageUrl && (
               <img
                 src={record.imageUrl}
                 alt={record.name}
                 style={{
-                  width: 50,
-                  height: 50,
+                  width: 40,
+                  height: 40,
                   marginRight: 8,
                   objectFit: "cover",
+                  borderRadius: 4,
+                  flexShrink: 0
                 }}
               />
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-              <EditableCell
-                value={text}
-                resortId={record._id}
-                field="name"
-                placeholder="Resort name"
-              />
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                <EditableCell
+                  value={text}
+                  resortId={record._id}
+                  field="name"
+                  placeholder="Resort name"
+                />
+              </div>
               {displayName && (
                 <Tooltip title="Copy resort name">
                   <Button
@@ -489,7 +478,8 @@ const ResortTable = ({ data, setData }) => {
                       transition: 'opacity 0.2s',
                       padding: '2px 4px',
                       height: 'auto',
-                      minWidth: 'auto'
+                      minWidth: 'auto',
+                      flexShrink: 0
                     }}
                     onMouseEnter={(e) => {
                       e.target.style.opacity = 1;
@@ -506,30 +496,38 @@ const ResortTable = ({ data, setData }) => {
       },
     },
     {
-      title: "GeoJSON Data",
+      title: "GeoJSON",
       dataIndex: "geoJsonData",
       key: "geoJsonData",
-      render: (geoJsonData) => (geoJsonData ? "Yes" : "No"),
+      width: 80,
+      align: 'center',
+      render: (geoJsonData) => (
+        <Tag color={geoJsonData ? "green" : "red"} style={{ margin: 0 }}>
+          {geoJsonData ? "Yes" : "No"}
+        </Tag>
+      ),
     },
+
     {
-      title: "Mapbox Tile URL",
-      dataIndex: "mapboxVectorUrl",
-      key: "mapboxVectorUrl",
-      render: (mapboxVectorUrl) => (mapboxVectorUrl ? "Yes" : "No"),
-    },
-    {
-      title: "Location",
+      title: "Coordinates",
       dataIndex: "location",
       key: "location",
-      render: (location) =>
-        location && location.coordinates
-          ? `${location.coordinates[0]}, ${location.coordinates[1]}`
-          : "",
+      width: 150,
+      render: (location) => {
+        if (!location || !location.coordinates) return "-";
+        const [lng, lat] = location.coordinates;
+        return (
+          <div style={{ fontSize: 12, fontFamily: 'monospace' }}>
+            {lat.toFixed(4)}, {lng.toFixed(4)}
+          </div>
+        );
+      },
     },
     { 
       title: "Country", 
       dataIndex: "country", 
       key: "country",
+      width: 160,
       render: (text, record) => (
         <EditableCell
           value={text}
@@ -540,15 +538,16 @@ const ResortTable = ({ data, setData }) => {
       ),
     },
     { 
-      title: "Province/State", 
+      title: "Province", 
       dataIndex: "province", 
       key: "province",
+      width: 160,
       render: (text, record) => (
         <EditableCell
           value={text}
           resortId={record._id}
           field="province"
-          placeholder="Province/State"
+          placeholder="Province"
         />
       ),
     },
@@ -556,58 +555,30 @@ const ResortTable = ({ data, setData }) => {
       title: "Website",
       dataIndex: "website",
       key: "website",
+      width: 150,
       render: (website, record) => {
         const isEditing = editingCell?.resortId === record._id && editingCell?.field === 'website';
         
                  if (isEditing) {
            return (
-             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-               <Input
-                 value={editingValue}
-                 onChange={(e) => setEditingValue(e.target.value)}
-                 onKeyDown={handleKeyPress}
-                 onBlur={(e) => {
-                   // Small delay to allow save button click to register
-                   setTimeout(() => {
-                     if (editingCell?.resortId === record._id && editingCell?.field === 'website') {
-                       saveInlineEdit();
-                     }
-                   }, 100);
-                 }}
-                 autoFocus
-                 size="small"
-                 placeholder="https://example.com"
-                 style={{ minWidth: 200 }}
-                 onPressEnter={(e) => {
-                   e.preventDefault();
-                   e.stopPropagation();
-                   saveInlineEdit();
-                 }}
-               />
-               <Button
-                 type="text"
-                 size="small"
-                 icon={<SaveOutlined />}
-                 loading={savingCell}
-                 onClick={(e) => {
-                   e.preventDefault();
-                   e.stopPropagation();
-                   saveInlineEdit();
-                 }}
-                 style={{ color: '#52c41a' }}
-               />
-               <Button
-                 type="text"
-                 size="small"
-                 icon={<CloseOutlined />}
-                 onClick={(e) => {
-                   e.preventDefault();
-                   e.stopPropagation();
-                   cancelEditing();
-                 }}
-                 style={{ color: '#ff4d4f' }}
-               />
-             </div>
+             <Input
+               value={editingValue}
+               onChange={(e) => setEditingValue(e.target.value)}
+               onKeyDown={handleKeyPress}
+               onBlur={(e) => {
+                 // Save on blur (clicking away)
+                 saveInlineEdit();
+               }}
+               autoFocus
+               size="small"
+               placeholder="https://example.com"
+               style={{ width: '100%' }}
+               onPressEnter={(e) => {
+                 e.preventDefault();
+                 e.stopPropagation();
+                 saveInlineEdit();
+               }}
+             />
            );
          }
 
@@ -687,6 +658,7 @@ const ResortTable = ({ data, setData }) => {
       title: "Skiable Terrain",
       dataIndex: "skiable_terrain",
       key: "skiable_terrain",
+      width: 150,
       render: (text, record) => (
         <EditableCell
           value={text}
@@ -700,6 +672,7 @@ const ResortTable = ({ data, setData }) => {
       title: "Longest Run", 
       dataIndex: "longestRun", 
       key: "longestRun",
+      width: 150,
       render: (text, record) => (
         <EditableCell
           value={text}
@@ -713,35 +686,43 @@ const ResortTable = ({ data, setData }) => {
       title: "Runs",
       dataIndex: "runs",
       key: "runs",
+      width: 80,
+      align: 'center',
       render: (runs) => {
         const open = runs?.open || 0;
         const total = runs?.total || 0;
-        return `${open} / ${total}`;
+        return (
+          <div style={{ fontFamily: 'monospace', fontSize: 12 }}>
+            {open} / {total}
+          </div>
+        );
       },
     },
     {
-      title: "Base Elevation",
+      title: "Base Elev",
       dataIndex: "baseElevation",
       key: "baseElevation",
+      width: 100,
       render: (text, record) => (
         <EditableCell
           value={text}
           resortId={record._id}
           field="baseElevation"
-          placeholder="Base elevation"
+          placeholder="Base"
         />
       ),
     },
     { 
-      title: "Top Elevation", 
+      title: "Top Elev", 
       dataIndex: "topElevation", 
       key: "topElevation",
+      width: 100,
       render: (text, record) => (
         <EditableCell
           value={text}
           resortId={record._id}
           field="topElevation"
-          placeholder="Top elevation"
+          placeholder="Top"
         />
       ),
     },
@@ -749,10 +730,16 @@ const ResortTable = ({ data, setData }) => {
       title: "Lifts",
       dataIndex: "lifts",
       key: "lifts",
+      width: 80,
+      align: 'center',
       render: (lifts) => {
         const open = lifts?.open || 0;
         const total = lifts?.total || 0;
-        return `${open} / ${total}`;
+        return (
+          <div style={{ fontFamily: 'monospace', fontSize: 12 }}>
+            {open} / {total}
+          </div>
+        );
       },
     },
     {
@@ -1274,6 +1261,7 @@ const ResortTable = ({ data, setData }) => {
         dataSource={filteredData}
         rowKey="_id"
         title={tableTitle}
+        scroll={{ x: 1600 }}
         pagination={{
           showSizeChanger: true,
           showQuickJumper: true,
