@@ -78,12 +78,12 @@ const ResortForm = ({
         gondolas: editingResort.gondolas || null,
         snowCats: editingResort.snowCats || null,
         helicopters: editingResort.helicopters || null,
-        // Heli skiing and snowcat tour pricing
+        // Heli skiing and snowcat tour packages
         heliSkiing: {
-          pricing: editingResort.heliSkiing?.pricing || {}
+          packages: editingResort.heliSkiing?.packages || []
         },
         snowcatTours: {
-          pricing: editingResort.snowcatTours?.pricing || {}
+          packages: editingResort.snowcatTours?.packages || []
         },
       });
       setImageFileList([]); // Reset image file list for editing
@@ -470,89 +470,197 @@ const ResortForm = ({
               </Col>
             </Row>
 
-            {/* Heli Skiing Pricing */}
+            {/* Heli Skiing Packages */}
             <Row gutter={[16, 8]}>
               <Col span={24}>
                 <Typography.Title level={5} style={{ margin: '16px 0 8px 0', color: '#1890ff' }}>
-                  🚁 Heli Skiing Pricing
+                  🚁 Heli Skiing Packages
                 </Typography.Title>
               </Col>
-              <Col xs={12} sm={8}>
-                <Form.Item name={['heliSkiing', 'pricing', 'halfDay']} label="Half Day Price ($)">
-                  <InputNumber
-                    prefix="$"
-                    style={{ width: '100%' }}
-                    placeholder="950.00"
-                    step={0.01}
-                    min={0}
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={12} sm={8}>
-                <Form.Item name={['heliSkiing', 'pricing', 'fullDay']} label="Full Day Price ($)">
-                  <InputNumber
-                    prefix="$"
-                    style={{ width: '100%' }}
-                    placeholder="1500.00"
-                    step={0.01}
-                    min={0}
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={12} sm={8}>
-                <Form.Item name={['heliSkiing', 'pricing', 'perRun']} label="Per Run Price ($)">
-                  <InputNumber
-                    prefix="$"
-                    style={{ width: '100%' }}
-                    placeholder="200.00"
-                    step={0.01}
-                    min={0}
-                  />
-                </Form.Item>
-              </Col>
             </Row>
+            
+            <Form.List name={['heliSkiing', 'packages']}>
+              {(fields, { add, remove }) => (
+                <>
+                  {fields.map(({ key, name, ...restField }) => (
+                    <Row key={key} gutter={[16, 8]} style={{ marginBottom: 16, padding: '12px', backgroundColor: '#f8faff', borderRadius: '6px', border: '1px solid #d6e4ff' }}>
+                      <Col xs={24} sm={8}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'name']}
+                          label="Package Name"
+                          rules={[{ required: true, message: 'Package name is required' }]}
+                        >
+                          <Input placeholder="3-Run Package" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={6}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'price']}
+                          label="Price ($)"
+                          rules={[{ required: true, message: 'Price is required' }]}
+                        >
+                          <InputNumber
+                            prefix="$"
+                            style={{ width: '100%' }}
+                            placeholder="1299.00"
+                            step={0.01}
+                            min={0}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={4}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'runs']}
+                          label="Runs"
+                        >
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            placeholder="3"
+                            min={1}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={4}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'skillLevel']}
+                          label="Skill Level"
+                        >
+                          <Select placeholder="Beginner">
+                            <Option value="Beginner">Beginner</Option>
+                            <Option value="Intermediate">Intermediate</Option>
+                            <Option value="Advanced">Advanced</Option>
+                            <Option value="Expert">Expert</Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={2} style={{ display: 'flex', alignItems: 'end', justifyContent: 'center' }}>
+                        <Button 
+                          type="text" 
+                          danger 
+                          onClick={() => remove(name)}
+                          style={{ marginBottom: 24 }}
+                        >
+                          Remove
+                        </Button>
+                      </Col>
+                      <Col xs={24}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'description']}
+                          label="Description"
+                        >
+                          <Input placeholder="Introduction to Heli-Skiing" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  ))}
+                  <Row>
+                    <Col span={24}>
+                      <Button 
+                        type="dashed" 
+                        onClick={() => add()} 
+                        style={{ width: '100%', marginBottom: 16 }}
+                      >
+                        + Add Heli Skiing Package
+                      </Button>
+                    </Col>
+                  </Row>
+                </>
+              )}
+            </Form.List>
 
-            {/* Snowcat Tours Pricing */}
+            {/* Snowcat Tours Packages */}
             <Row gutter={[16, 8]}>
               <Col span={24}>
                 <Typography.Title level={5} style={{ margin: '16px 0 8px 0', color: '#52c41a' }}>
-                  🚗 Snowcat Tours Pricing
+                  🚗 Snowcat Tours Packages
                 </Typography.Title>
               </Col>
-              <Col xs={12} sm={8}>
-                <Form.Item name={['snowcatTours', 'pricing', 'halfDay']} label="Half Day Price ($)">
-                  <InputNumber
-                    prefix="$"
-                    style={{ width: '100%' }}
-                    placeholder="225.00"
-                    step={0.01}
-                    min={0}
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={12} sm={8}>
-                <Form.Item name={['snowcatTours', 'pricing', 'fullDay']} label="Full Day Price ($)">
-                  <InputNumber
-                    prefix="$"
-                    style={{ width: '100%' }}
-                    placeholder="350.00"
-                    step={0.01}
-                    min={0}
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={12} sm={8}>
-                <Form.Item name={['snowcatTours', 'pricing', 'multiDay', 'threeDays']} label="3-Day Package ($)">
-                  <InputNumber
-                    prefix="$"
-                    style={{ width: '100%' }}
-                    placeholder="980.00"
-                    step={0.01}
-                    min={0}
-                  />
-                </Form.Item>
-              </Col>
             </Row>
+            
+            <Form.List name={['snowcatTours', 'packages']}>
+              {(fields, { add, remove }) => (
+                <>
+                  {fields.map(({ key, name, ...restField }) => (
+                    <Row key={key} gutter={[16, 8]} style={{ marginBottom: 16, padding: '12px', backgroundColor: '#f6ffed', borderRadius: '6px', border: '1px solid #b7eb8f' }}>
+                      <Col xs={24} sm={8}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'name']}
+                          label="Package Name"
+                          rules={[{ required: true, message: 'Package name is required' }]}
+                        >
+                          <Input placeholder="Snowcat Adventure" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={6}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'price']}
+                          label="Price ($)"
+                          rules={[{ required: true, message: 'Price is required' }]}
+                        >
+                          <InputNumber
+                            prefix="$"
+                            style={{ width: '100%' }}
+                            placeholder="350.00"
+                            step={0.01}
+                            min={0}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={6}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'duration']}
+                          label="Duration"
+                        >
+                          <Select placeholder="Full Day">
+                            <Option value="Half Day">Half Day</Option>
+                            <Option value="Full Day">Full Day</Option>
+                            <Option value="Multi Day">Multi Day</Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={2} style={{ display: 'flex', alignItems: 'end', justifyContent: 'center' }}>
+                        <Button 
+                          type="text" 
+                          danger 
+                          onClick={() => remove(name)}
+                          style={{ marginBottom: 24 }}
+                        >
+                          Remove
+                        </Button>
+                      </Col>
+                      <Col xs={24}>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'description']}
+                          label="Description"
+                        >
+                          <Input placeholder="Guided snowcat tour experience" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  ))}
+                  <Row>
+                    <Col span={24}>
+                      <Button 
+                        type="dashed" 
+                        onClick={() => add()} 
+                        style={{ width: '100%', marginBottom: 16 }}
+                      >
+                        + Add Snowcat Package
+                      </Button>
+                    </Col>
+                  </Row>
+                </>
+              )}
+            </Form.List>
           </Panel>
 
           {/* Ski Passes & Media Panel */}
