@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Form, Input, Button, Upload, Select, InputNumber, Card, Row, Col, Collapse, Space, Affix, Switch } from "antd";
+import { Form, Input, Button, Upload, Select, InputNumber, Card, Row, Col, Collapse, Space, Affix, Switch, Typography } from "antd";
 import { InboxOutlined, UploadOutlined, SaveOutlined, EnvironmentOutlined, InfoCircleOutlined, AreaChartOutlined, CameraOutlined, FlagOutlined } from "@ant-design/icons";
 import { uploadImageToGCS } from "../../../services/GoogleBucketService";
 import { fetchSkiPasses } from "../../../services/skiPassService";
@@ -78,6 +78,13 @@ const ResortForm = ({
         gondolas: editingResort.gondolas || null,
         snowCats: editingResort.snowCats || null,
         helicopters: editingResort.helicopters || null,
+        // Heli skiing and snowcat tour pricing
+        heliSkiing: {
+          pricing: editingResort.heliSkiing?.pricing || {}
+        },
+        snowcatTours: {
+          pricing: editingResort.snowcatTours?.pricing || {}
+        },
       });
       setImageFileList([]); // Reset image file list for editing
       
@@ -124,6 +131,15 @@ const ResortForm = ({
       formData.append("skiable_terrain", values.skiable_terrain || "");
       formData.append("snowCats", values.snowCats || "");
       formData.append("helicopters", values.helicopters || "");
+      
+      // Add heli skiing and snowcat tour data
+      if (values.heliSkiing) {
+        formData.append("heliSkiing", JSON.stringify(values.heliSkiing));
+      }
+      if (values.snowcatTours) {
+        formData.append("snowcatTours", JSON.stringify(values.snowcatTours));
+      }
+      
       formData.append("mapboxVector", values.mapboxVectorUrl || "");
 
       // Add ski passes to form data
@@ -427,13 +443,113 @@ const ResortForm = ({
                 </Form.Item>
               </Col>
               <Col xs={12} sm={6}>
-                <Form.Item name="snowCats" label="Snow Cats">
-                  <InputNumber style={{ width: '100%' }} />
+                <Form.Item 
+                  name="snowCats" 
+                  label="Snow Cats"
+                  tooltip="Number of snowcats available for guided tours. Set to 0 to disable snowcat tours."
+                >
+                  <InputNumber 
+                    min={0}
+                    style={{ width: '100%' }} 
+                    placeholder="0"
+                  />
                 </Form.Item>
               </Col>
               <Col xs={12} sm={6}>
-                <Form.Item name="helicopters" label="Helicopters">
-                  <InputNumber style={{ width: '100%' }} />
+                <Form.Item 
+                  name="helicopters" 
+                  label="Helicopters"
+                  tooltip="Number of helicopters available for heli skiing. Set to 0 to disable heli skiing."
+                >
+                  <InputNumber 
+                    min={0}
+                    style={{ width: '100%' }} 
+                    placeholder="0"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            {/* Heli Skiing Pricing */}
+            <Row gutter={[16, 8]}>
+              <Col span={24}>
+                <Typography.Title level={5} style={{ margin: '16px 0 8px 0', color: '#1890ff' }}>
+                  🚁 Heli Skiing Pricing
+                </Typography.Title>
+              </Col>
+              <Col xs={12} sm={8}>
+                <Form.Item name={['heliSkiing', 'pricing', 'halfDay']} label="Half Day Price ($)">
+                  <InputNumber
+                    prefix="$"
+                    style={{ width: '100%' }}
+                    placeholder="950.00"
+                    step={0.01}
+                    min={0}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={8}>
+                <Form.Item name={['heliSkiing', 'pricing', 'fullDay']} label="Full Day Price ($)">
+                  <InputNumber
+                    prefix="$"
+                    style={{ width: '100%' }}
+                    placeholder="1500.00"
+                    step={0.01}
+                    min={0}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={8}>
+                <Form.Item name={['heliSkiing', 'pricing', 'perRun']} label="Per Run Price ($)">
+                  <InputNumber
+                    prefix="$"
+                    style={{ width: '100%' }}
+                    placeholder="200.00"
+                    step={0.01}
+                    min={0}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            {/* Snowcat Tours Pricing */}
+            <Row gutter={[16, 8]}>
+              <Col span={24}>
+                <Typography.Title level={5} style={{ margin: '16px 0 8px 0', color: '#52c41a' }}>
+                  🚗 Snowcat Tours Pricing
+                </Typography.Title>
+              </Col>
+              <Col xs={12} sm={8}>
+                <Form.Item name={['snowcatTours', 'pricing', 'halfDay']} label="Half Day Price ($)">
+                  <InputNumber
+                    prefix="$"
+                    style={{ width: '100%' }}
+                    placeholder="225.00"
+                    step={0.01}
+                    min={0}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={8}>
+                <Form.Item name={['snowcatTours', 'pricing', 'fullDay']} label="Full Day Price ($)">
+                  <InputNumber
+                    prefix="$"
+                    style={{ width: '100%' }}
+                    placeholder="350.00"
+                    step={0.01}
+                    min={0}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={8}>
+                <Form.Item name={['snowcatTours', 'pricing', 'multiDay', 'threeDays']} label="3-Day Package ($)">
+                  <InputNumber
+                    prefix="$"
+                    style={{ width: '100%' }}
+                    placeholder="980.00"
+                    step={0.01}
+                    min={0}
+                  />
                 </Form.Item>
               </Col>
             </Row>

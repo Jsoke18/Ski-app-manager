@@ -1,7 +1,8 @@
-import React, { useState, useEffect, props, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Table, Button, Modal, message, Input, Select, Row, Col, Card, Space, Tag, Switch, Divider, Typography, Affix, Badge, Tooltip } from "antd";
-import { SearchOutlined, FilterOutlined, ClearOutlined, CheckOutlined, CloseOutlined, EditOutlined, SaveOutlined, FlagOutlined, FlagFilled, UndoOutlined, CopyOutlined } from "@ant-design/icons";
+import { SearchOutlined, FilterOutlined, ClearOutlined, CheckOutlined, CloseOutlined, EditOutlined, SaveOutlined, FlagOutlined, FlagFilled, UndoOutlined, CopyOutlined, CarOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import ResortForm from "./ResortsForm";
+
 import {
   fetchResorts,
   addResort,
@@ -19,6 +20,8 @@ const ResortTable = ({ data, setData }) => {
   const [editingResort, setEditingResort] = useState(null);
   const [isAddingResort, setIsAddingResort] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  
+
   
   // Inline editing states
   const [editingCell, setEditingCell] = useState(null); // { resortId, field }
@@ -757,6 +760,56 @@ const ResortTable = ({ data, setData }) => {
       },
     },
     {
+      title: "Heli & Snowcat",
+      key: "heliSnowcat",
+      width: 120,
+      render: (text, record) => {
+        const helicopters = record.helicopters || 0;
+        const snowCats = record.snowCats || 0;
+        const hasEquipment = helicopters > 0 || snowCats > 0;
+        
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Space>
+                {helicopters > 0 && (
+                  <Tooltip title={`${helicopters} helicopter${helicopters > 1 ? 's' : ''}`}>
+                    <Tag color="blue" size="small">
+                      🚁 {helicopters}
+                    </Tag>
+                  </Tooltip>
+                )}
+                {snowCats > 0 && (
+                  <Tooltip title={`${snowCats} snowcat${snowCats > 1 ? 's' : ''}`}>
+                    <Tag color="green" size="small">
+                      <CarOutlined /> {snowCats}
+                    </Tag>
+                  </Tooltip>
+                )}
+                {!hasEquipment && (
+                  <Tag color="default" size="small">None</Tag>
+                )}
+              </Space>
+            </div>
+            <Button
+              type="link"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => setEditingResort(record)}
+              style={{ 
+                padding: '0 4px', 
+                height: 'auto', 
+                fontSize: '12px',
+                color: hasEquipment ? '#1890ff' : '#8c8c8c'
+              }}
+            >
+              {hasEquipment ? 'Edit Details' : 'Add Services'}
+            </Button>
+          </div>
+        );
+      },
+    },
+    {
       title: "Flag",
       key: "flagged",
       width: 80,
@@ -806,6 +859,8 @@ const ResortTable = ({ data, setData }) => {
     setIsAddingResort(false);
     setModalVisible(false);
   };
+
+
 
   const handleAddResort = async (formData) => {
     try {
@@ -1355,6 +1410,8 @@ const ResortTable = ({ data, setData }) => {
           }}
         />
       </Modal>
+
+
     </>
   );
 };
