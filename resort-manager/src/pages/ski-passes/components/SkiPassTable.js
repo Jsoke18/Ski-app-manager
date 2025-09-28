@@ -1,6 +1,6 @@
 import React from "react";
-import { Table, Button, Space, Popconfirm, Tag, Tooltip, Avatar } from "antd";
-import { EditOutlined, DeleteOutlined, EyeOutlined, GlobalOutlined } from "@ant-design/icons";
+import { Table, Button, Popconfirm, Tag, Avatar } from "antd";
+import { EditOutlined, DeleteOutlined, GlobalOutlined } from "@ant-design/icons";
 
 const SkiPassTable = ({ skiPasses, onEdit, onDelete, loading }) => {
   const formatPrice = (price) => {
@@ -28,159 +28,237 @@ const SkiPassTable = ({ skiPasses, onEdit, onDelete, loading }) => {
 
   const columns = [
     {
-      title: 'Pass Name',
+      title: 'Pass Details',
       dataIndex: 'name',
       key: 'name',
+      fixed: 'left',
+      width: 250,
       render: (text, record) => (
-        <Space>
-          {(record.imageUrl || record.logo) && (
-            <Avatar 
-              src={record.imageUrl || record.logo} 
-              size={32}
-              style={{ backgroundColor: record.color || '#f56a00' }}
-            >
-              {text.charAt(0)}
-            </Avatar>
-          )}
-          <div>
-            <div style={{ fontWeight: 'bold', color: record.color || '#1890ff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0' }}>
+          <Avatar 
+            src={record.imageUrl || record.logo} 
+            size={48}
+            style={{ 
+              backgroundColor: record.color || '#1890ff',
+              flexShrink: 0,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}
+          >
+            {text.charAt(0)}
+          </Avatar>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ 
+              fontWeight: 'bold', 
+              color: record.color || '#1890ff',
+              fontSize: '14px',
+              marginBottom: '4px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
               {text}
             </div>
-            <div style={{ fontSize: '12px', color: '#666' }}>
-              {record.season}
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>
+              Season: {record.season || 'N/A'}
             </div>
+            <Tag 
+              color={record.isActive ? 'green' : 'red'} 
+              size="small"
+              style={{ margin: 0 }}
+            >
+              {record.isActive ? 'Active' : 'Inactive'}
+            </Tag>
           </div>
-        </Space>
+        </div>
       ),
-      width: 200,
     },
     {
-      title: 'Type',
-      dataIndex: 'passType',
-      key: 'passType',
-      render: (type) => {
+      title: 'Type & Description',
+      key: 'typeDescription',
+      width: 280,
+      render: (_, record) => {
         const colors = {
           'multi-resort': 'green',
           'single-resort': 'blue',
           'limited': 'orange',
           'day-pass': 'purple'
         };
-        return <Tag color={colors[type] || 'default'}>{type}</Tag>;
-      },
-      width: 120,
-    },
-    {
-      title: 'Description',
-      dataIndex: 'description',
-      key: 'description',
-      render: (text) => (
-        <Tooltip title={text}>
-          <div style={{ maxWidth: 200 }}>
-            {text && text.length > 100 ? `${text.substring(0, 100)}...` : text}
+        return (
+          <div style={{ padding: '4px 0' }}>
+            <div style={{ marginBottom: '8px' }}>
+              <Tag color={colors[record.passType] || 'default'} style={{ fontSize: '11px' }}>
+                {record.passType || 'Standard'}
+              </Tag>
+            </div>
+            <div style={{ 
+              fontSize: '13px',
+              lineHeight: '1.4',
+              color: '#333',
+              wordWrap: 'break-word',
+              maxHeight: '60px',
+              overflow: 'hidden'
+            }}>
+              {record.description || 'No description available'}
+            </div>
           </div>
-        </Tooltip>
-      ),
-      width: 220,
+        );
+      },
     },
     {
       title: 'Pricing',
       key: 'pricing',
+      width: 180,
       render: (_, record) => (
-        <div>
-          <div><strong>Adult:</strong> {formatPrice(record.price?.adult)}</div>
-          {record.price?.child && <div><strong>Child:</strong> {formatPrice(record.price.child)}</div>}
-          {record.price?.senior && <div><strong>Senior:</strong> {formatPrice(record.price.senior)}</div>}
-          {record.price?.student && <div><strong>Student:</strong> {formatPrice(record.price.student)}</div>}
-        </div>
-      ),
-      width: 150,
-    },
-    {
-      title: 'Restrictions',
-      key: 'restrictions',
-      render: (_, record) => (
-        <div>
-          {record.restrictions?.limitedDays && (
-            <div><strong>Limited Days:</strong> {record.restrictions.limitedDays}</div>
-          )}
-          {record.restrictions?.advanceReservation && (
-            <Tag color="warning">Advance Reservation Required</Tag>
-          )}
-          <div style={{ marginTop: 4 }}>
-            <strong>Blackout Dates:</strong>
-            <div>{formatBlackoutDates(record.restrictions?.blackoutDates)}</div>
+        <div style={{ padding: '4px 0' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1fr 1fr',
+            gap: '4px',
+            fontSize: '12px'
+          }}>
+            <div style={{ padding: '2px 0' }}>
+              <span style={{ color: '#666', fontWeight: '500' }}>Adult:</span>
+              <div style={{ fontWeight: 'bold', color: '#1890ff' }}>
+                {formatPrice(record.price?.adult)}
+              </div>
+            </div>
+            {record.price?.child && (
+              <div style={{ padding: '2px 0' }}>
+                <span style={{ color: '#666', fontWeight: '500' }}>Child:</span>
+                <div style={{ fontWeight: 'bold', color: '#52c41a' }}>
+                  {formatPrice(record.price.child)}
+                </div>
+              </div>
+            )}
+            {record.price?.senior && (
+              <div style={{ padding: '2px 0' }}>
+                <span style={{ color: '#666', fontWeight: '500' }}>Senior:</span>
+                <div style={{ fontWeight: 'bold', color: '#fa8c16' }}>
+                  {formatPrice(record.price.senior)}
+                </div>
+              </div>
+            )}
+            {record.price?.student && (
+              <div style={{ padding: '2px 0' }}>
+                <span style={{ color: '#666', fontWeight: '500' }}>Student:</span>
+                <div style={{ fontWeight: 'bold', color: '#722ed1' }}>
+                  {formatPrice(record.price.student)}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ),
-      width: 200,
     },
     {
-      title: 'Benefits',
-      dataIndex: 'benefits',
-      key: 'benefits',
-      render: (benefits) => (
-        <div>
-          {formatBenefits(benefits)}
-          {benefits && benefits.length > 2 && (
-            <Tag>+{benefits.length - 2} more</Tag>
-          )}
+      title: 'Restrictions & Benefits',
+      key: 'restrictionsBenefits',
+      width: 320,
+      render: (_, record) => (
+        <div style={{ padding: '4px 0' }}>
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginBottom: '6px' }}>
+              Restrictions
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {record.restrictions?.limitedDays && (
+                <div style={{ fontSize: '11px' }}>
+                  <span style={{ color: '#666' }}>Limited Days:</span> {record.restrictions.limitedDays}
+                </div>
+              )}
+              {record.restrictions?.advanceReservation && (
+                <Tag color="warning" size="small" style={{ alignSelf: 'flex-start' }}>
+                  Advance Reservation Required
+                </Tag>
+              )}
+              {record.restrictions?.blackoutDates && record.restrictions.blackoutDates.length > 0 && (
+                <div>
+                  <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>Blackout Dates:</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
+                    {formatBlackoutDates(record.restrictions.blackoutDates)}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginBottom: '6px' }}>
+              Benefits
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {record.benefits && record.benefits.length > 0 ? (
+                <>
+                  {formatBenefits(record.benefits)}
+                  {record.benefits.length > 2 && (
+                    <Tag size="small" style={{ alignSelf: 'flex-start', marginTop: '2px' }}>
+                      +{record.benefits.length - 2} more
+                    </Tag>
+                  )}
+                </>
+              ) : (
+                <span style={{ fontSize: '11px', color: '#999', fontStyle: 'italic' }}>
+                  No benefits listed
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       ),
-      width: 180,
-    },
-    {
-      title: 'Status',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      render: (isActive) => (
-        <Tag color={isActive ? 'green' : 'red'}>
-          {isActive ? 'Active' : 'Inactive'}
-        </Tag>
-      ),
-      width: 80,
     },
     {
       title: 'Actions',
       key: 'actions',
+      width: 140,
+      fixed: 'right',
       render: (_, record) => (
-        <Space size="small">
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '6px',
+          padding: '4px 0'
+        }}>
           {record.website && (
-            <Tooltip title="Visit Website">
-              <Button
-                type="link"
-                icon={<GlobalOutlined />}
-                size="small"
-                onClick={() => window.open(record.website, '_blank')}
-              />
-            </Tooltip>
-          )}
-          <Tooltip title="Edit">
             <Button
-              type="link"
-              icon={<EditOutlined />}
+              type="primary"
               size="small"
-              onClick={() => onEdit(record)}
-            />
-          </Tooltip>
+              icon={<GlobalOutlined />}
+              onClick={() => window.open(record.website, '_blank')}
+              style={{ fontSize: '11px' }}
+              block
+            >
+              Visit Site
+            </Button>
+          )}
+          <Button
+            type="default"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => onEdit(record)}
+            style={{ fontSize: '11px' }}
+            block
+          >
+            Edit
+          </Button>
           <Popconfirm
             title="Are you sure you want to delete this ski pass?"
             onConfirm={() => onDelete(record._id)}
             okText="Yes"
             cancelText="No"
+            placement="topRight"
           >
-            <Tooltip title="Delete">
-              <Button
-                type="link"
-                danger
-                icon={<DeleteOutlined />}
-                size="small"
-              />
-            </Tooltip>
+            <Button
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              style={{ fontSize: '11px' }}
+              block
+            >
+              Delete
+            </Button>
           </Popconfirm>
-        </Space>
+        </div>
       ),
-      width: 120,
-      fixed: 'right',
     },
   ];
 
@@ -190,15 +268,24 @@ const SkiPassTable = ({ skiPasses, onEdit, onDelete, loading }) => {
       dataSource={skiPasses}
       rowKey="_id"
       loading={loading}
-      scroll={{ x: 1400 }}
+      scroll={{ 
+        x: 1200,
+        y: 'calc(100vh - 300px)'
+      }}
       pagination={{
         pageSize: 10,
         showSizeChanger: true,
         showQuickJumper: true,
         showTotal: (total, range) =>
           `${range[0]}-${range[1]} of ${total} ski passes`,
+        pageSizeOptions: ['10', '20', '50'],
       }}
       size="middle"
+      style={{
+        background: '#fff',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}
     />
   );
 };

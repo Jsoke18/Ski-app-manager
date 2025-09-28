@@ -27,7 +27,11 @@ const App = () => {
           <Menu.Item key="5">Ski Passes</Menu.Item>
         </Menu>
       </Header>
-      <Content style={{ padding: selectedKey === '4' ? '0' : '50px' }}>
+      <Content style={{ 
+        padding: selectedKey === '4' ? '0' : selectedKey === '1' ? '0' : '50px',
+        minHeight: 'calc(100vh - 64px - 70px)',
+        overflow: selectedKey === '1' ? 'visible' : 'hidden'
+      }}>
         {selectedKey === '1' && <ResortsPage />}
         {selectedKey === '2' && <UsersPage />}
         {selectedKey === '3' && <ScrapingPage />}

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Typography, Alert, Row, Col, Button, message } from "antd";
+import { Typography, Alert, message } from "antd";
 import ResortForm from "./components/ResortsForm";
 import ResortTable from "./components/ResortsTable";
 import {
   fetchResorts,
   addResort,
-  updateResort,
   deleteResort,
 } from "../../services/resortService";
 
@@ -45,10 +44,6 @@ const ResortsPage = () => {
     setEditingResort(resort);
   };
 
-  const updateResorts = (updatedResorts) => {
-    setResorts(updatedResorts);
-  };
-
 
   const handleDeleteResort = async (resortId) => {
     try {
@@ -68,21 +63,46 @@ const ResortsPage = () => {
     }
   };
   return (
-    <div>
-      {error && <Alert message={error} type="error" closable />}
-      <Row gutter={16}>
-        <Col span={editingResort ? 12 : 24}>
-          <ResortTable
-            data={resorts}
-            setData={setResorts}
-            handleEdit={handleEdit}
-            handleAddResort={handleAddResort}
-            handleDeleteResort={handleDeleteResort} // Pass handleDeleteResort as a prop
-          />
-        </Col>
-        {editingResort && (
-          <Col span={12}>
-            <Title level={2}>Edit Resort</Title>
+    <div style={{ 
+      background: '#f5f5f5',
+      minHeight: '100vh'
+    }}>
+      {error && (
+        <Alert 
+          message={error} 
+          type="error" 
+          closable 
+          style={{ 
+            margin: '16px',
+            borderRadius: '8px',
+            flexShrink: 0
+          }}
+        />
+      )}
+      
+      {editingResort ? (
+        <div style={{ display: 'flex', minHeight: 'calc(100vh - 64px - 70px)' }}>
+          <div style={{ 
+            flex: '2',
+            background: '#fff',
+            borderRight: '1px solid #e8e8e8'
+          }}>
+            <ResortTable
+              data={resorts}
+              setData={setResorts}
+              handleEdit={handleEdit}
+              handleAddResort={handleAddResort}
+              handleDeleteResort={handleDeleteResort}
+            />
+          </div>
+          <div style={{ 
+            flex: '1',
+            background: '#fafafa',
+            padding: '20px'
+          }}>
+            <Title level={3} style={{ marginTop: 0, color: '#1f1f1f' }}>
+              Edit Resort
+            </Title>
             <ResortForm
               editingResort={editingResort}
               onUpdateResort={(updatedResort) => {
@@ -93,9 +113,21 @@ const ResortsPage = () => {
                 setEditingResort(null);
               }}
             />
-          </Col>
-        )}
-      </Row>
+          </div>
+        </div>
+      ) : (
+        <div style={{ 
+          background: '#fff'
+        }}>
+          <ResortTable
+            data={resorts}
+            setData={setResorts}
+            handleEdit={handleEdit}
+            handleAddResort={handleAddResort}
+            handleDeleteResort={handleDeleteResort}
+          />
+        </div>
+      )}
     </div>
   );
 };

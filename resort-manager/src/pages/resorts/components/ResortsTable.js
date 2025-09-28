@@ -428,298 +428,285 @@ const ResortTable = ({ data, setData }) => {
       title: "Resort",
       dataIndex: "name",
       key: "name",
-      width: 250,
+      width: 280,
+      fixed: 'left',
       render: (text, record) => {
         const hasPendingChange = pendingChanges[record._id]?.name !== undefined;
         const displayName = hasPendingChange ? pendingChanges[record._id].name : text;
         
         return (
-          <div style={{ display: "flex", alignItems: "center", minWidth: 180 }}>
+          <div style={{ display: "flex", alignItems: "center", minWidth: 200, padding: '8px 0' }}>
             {record.imageUrl && (
               <img
                 src={record.imageUrl}
                 alt={record.name}
                 style={{
-                  width: 40,
-                  height: 40,
-                  marginRight: 8,
+                  width: 48,
+                  height: 48,
+                  marginRight: 12,
                   objectFit: "cover",
-                  borderRadius: 4,
-                  flexShrink: 0
+                  borderRadius: 6,
+                  flexShrink: 0,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                 }}
               />
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
-              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                <EditableCell
-                  value={text}
-                  resortId={record._id}
-                  field="name"
-                  placeholder="Resort name"
-                />
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ 
+                  fontWeight: 'bold', 
+                  fontSize: '14px',
+                  color: '#1f1f1f',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: '150px'
+                }}>
+                  {displayName || 'Unnamed Resort'}
+                </div>
+                {displayName && (
+                  <Tooltip title="Copy resort name">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<CopyOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyToClipboard(displayName, 'Resort name');
+                      }}
+                      style={{
+                        opacity: 0.6,
+                        transition: 'opacity 0.2s',
+                        padding: '2px 4px',
+                        height: 'auto',
+                        minWidth: 'auto',
+                        flexShrink: 0
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.opacity = 1;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.opacity = 0.6;
+                      }}
+                    />
+                  </Tooltip>
+                )}
               </div>
-              {displayName && (
-                <Tooltip title="Copy resort name">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<CopyOutlined />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      copyToClipboard(displayName, 'Resort name');
-                    }}
-                    style={{
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#8c8c8c',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                {record.country && record.province ? `${record.province}, ${record.country}` : 
+                 record.country ? record.country : 
+                 record.province ? record.province : 
+                 'Location not set'}
+              </div>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      title: "Location Details",
+      key: "locationDetails",
+      width: 300,
+      render: (_, record) => (
+        <div style={{ padding: '4px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '12px', color: '#666', fontWeight: '500' }}>GeoJSON:</span>
+              <Tag color={record.geoJsonData ? "green" : "red"} size="small">
+                {record.geoJsonData ? "✓" : "✗"}
+              </Tag>
+            </div>
+          </div>
+          {record.location && record.location.coordinates && (
+            <div style={{ 
+              fontSize: '11px', 
+              fontFamily: 'monospace',
+              color: '#666',
+              marginBottom: '4px',
+              padding: '2px 6px',
+              backgroundColor: '#f5f5f5',
+              borderRadius: '3px',
+              display: 'inline-block'
+            }}>
+              {record.location.coordinates[1].toFixed(4)}, {record.location.coordinates[0].toFixed(4)}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ minWidth: '80px' }}>
+              <div style={{ fontSize: '11px', color: '#999', marginBottom: '2px' }}>Country</div>
+              <EditableCell
+                value={record.country}
+                resortId={record._id}
+                field="country"
+                placeholder="Country"
+              />
+            </div>
+            <div style={{ minWidth: '80px' }}>
+              <div style={{ fontSize: '11px', color: '#999', marginBottom: '2px' }}>Province</div>
+              <EditableCell
+                value={record.province}
+                resortId={record._id}
+                field="province"
+                placeholder="Province"
+              />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Terrain & Web",
+      key: "terrainWeb",
+      width: 180,
+      render: (_, record) => {
+        const isEditing = editingCell?.resortId === record._id && editingCell?.field === 'website';
+        
+        return (
+          <div style={{ padding: '4px 0' }}>
+            <div style={{ marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', color: '#999', marginBottom: '2px' }}>Skiable Terrain</div>
+              <EditableCell
+                value={record.skiable_terrain}
+                resortId={record._id}
+                field="skiable_terrain"
+                placeholder="e.g., 2,500 acres"
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', color: '#999', marginBottom: '2px' }}>Website</div>
+              {isEditing ? (
+                <Input
+                  value={editingValue}
+                  onChange={(e) => setEditingValue(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  onBlur={(e) => {
+                    saveInlineEdit();
+                  }}
+                  autoFocus
+                  size="small"
+                  placeholder="https://example.com"
+                  style={{ width: '100%' }}
+                  onPressEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    saveInlineEdit();
+                  }}
+                />
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {record.website ? (
+                    <a 
+                      href={record.website} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{ 
+                        color: '#1890ff',
+                        fontSize: '12px',
+                        textDecoration: 'none'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Visit Site
+                    </a>
+                  ) : (
+                    <span 
+                      style={{ 
+                        color: '#999', 
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
+                      onDoubleClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        startEditing(record._id, 'website', record.website);
+                      }}
+                    >
+                      Add website
+                    </span>
+                  )}
+                  <EditOutlined 
+                    style={{ 
+                      fontSize: 10, 
+                      color: '#999', 
                       opacity: 0.6,
-                      transition: 'opacity 0.2s',
-                      padding: '2px 4px',
-                      height: 'auto',
-                      minWidth: 'auto',
-                      flexShrink: 0
+                      cursor: 'pointer'
                     }}
-                    onMouseEnter={(e) => {
-                      e.target.style.opacity = 1;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.opacity = 0.6;
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      startEditing(record._id, 'website', record.website);
                     }}
                   />
-                </Tooltip>
+                </div>
               )}
             </div>
           </div>
         );
       },
     },
-    {
-      title: "GeoJSON",
-      dataIndex: "geoJsonData",
-      key: "geoJsonData",
-      width: 80,
-      align: 'center',
-      render: (geoJsonData) => (
-        <Tag color={geoJsonData ? "green" : "red"} style={{ margin: 0 }}>
-          {geoJsonData ? "Yes" : "No"}
-        </Tag>
-      ),
-    },
 
     {
-      title: "Coordinates",
-      dataIndex: "location",
-      key: "location",
-      width: 150,
-      render: (location) => {
-        if (!location || !location.coordinates) return "-";
-        const [lng, lat] = location.coordinates;
-        return (
-          <div style={{ fontSize: 12, fontFamily: 'monospace' }}>
-            {lat.toFixed(4)}, {lng.toFixed(4)}
-          </div>
-        );
-      },
-    },
-    { 
-      title: "Country", 
-      dataIndex: "country", 
-      key: "country",
-      width: 120,
-      render: (text, record) => (
-        <EditableCell
-          value={text}
-          resortId={record._id}
-          field="country"
-          placeholder="Country"
-        />
-      ),
-    },
-    { 
-      title: "Province", 
-      dataIndex: "province", 
-      key: "province",
-      width: 120,
-      render: (text, record) => (
-        <EditableCell
-          value={text}
-          resortId={record._id}
-          field="province"
-          placeholder="Province"
-        />
-      ),
-    },
-    {
-      title: "Website",
-      dataIndex: "website",
-      key: "website",
-      width: 120,
-      render: (website, record) => {
-        const isEditing = editingCell?.resortId === record._id && editingCell?.field === 'website';
+      title: "Resort Stats",
+      key: "resortStats",
+      width: 200,
+      render: (_, record) => {
+        const runsOpen = record.runs?.open || 0;
+        const runsTotal = record.runs?.total || 0;
+        const liftsOpen = record.lifts?.open || 0;
+        const liftsTotal = record.lifts?.total || 0;
         
-                 if (isEditing) {
-           return (
-             <Input
-               value={editingValue}
-               onChange={(e) => setEditingValue(e.target.value)}
-               onKeyDown={handleKeyPress}
-               onBlur={(e) => {
-                 // Save on blur (clicking away)
-                 saveInlineEdit();
-               }}
-               autoFocus
-               size="small"
-               placeholder="https://example.com"
-               style={{ width: '100%' }}
-               onPressEnter={(e) => {
-                 e.preventDefault();
-                 e.stopPropagation();
-                 saveInlineEdit();
-               }}
-             />
-           );
-         }
-
-        if (!website) {
-          return (
-            <div
-              style={{
-                minHeight: 22,
-                padding: '2px 4px',
-                borderRadius: 4,
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                color: '#999'
-              }}
-              className="editable-cell"
-              onDoubleClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                startEditing(record._id, 'website', website);
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#f5f5f5';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'transparent';
-              }}
-            >
-              <span>Double-click to add website</span>
-              <EditOutlined style={{ fontSize: 12, color: '#999', opacity: 0.6 }} />
+        return (
+          <div style={{ padding: '4px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                <div style={{ fontSize: '11px', color: '#999', marginBottom: '2px' }}>Runs</div>
+                <div style={{ 
+                  fontFamily: 'monospace', 
+                  fontSize: '13px',
+                  fontWeight: 'bold',
+                  color: runsOpen > 0 ? '#52c41a' : '#d9d9d9'
+                }}>
+                  {runsOpen} / {runsTotal}
+                </div>
+              </div>
+              <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                <div style={{ fontSize: '11px', color: '#999', marginBottom: '2px' }}>Lifts</div>
+                <div style={{ 
+                  fontFamily: 'monospace', 
+                  fontSize: '13px',
+                  fontWeight: 'bold',
+                  color: liftsOpen > 0 ? '#52c41a' : '#d9d9d9'
+                }}>
+                  {liftsOpen} / {liftsTotal}
+                </div>
+              </div>
             </div>
-          );
-        }
-        
-        return (
-          <div
-            style={{
-              minHeight: 22,
-              padding: '2px 4px',
-              borderRadius: 4,
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4
-            }}
-            className="editable-cell"
-            onDoubleClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              startEditing(record._id, 'website', website);
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#f5f5f5';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'transparent';
-            }}
-          >
-            <a 
-              href={website} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{ color: '#1890ff' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              Visit Website
-            </a>
-            <EditOutlined style={{ fontSize: 12, color: '#999', opacity: 0.6 }} />
-          </div>
-        );
-      },
-    },
-    {
-      title: "Skiable Terrain",
-      dataIndex: "skiable_terrain",
-      key: "skiable_terrain",
-      width: 120,
-      render: (text, record) => (
-        <EditableCell
-          value={text}
-          resortId={record._id}
-          field="skiable_terrain"
-          placeholder="Skiable terrain"
-        />
-      ),
-    },
-
-    {
-      title: "Runs",
-      dataIndex: "runs",
-      key: "runs",
-      width: 80,
-      align: 'center',
-      render: (runs) => {
-        const open = runs?.open || 0;
-        const total = runs?.total || 0;
-        return (
-          <div style={{ fontFamily: 'monospace', fontSize: 12 }}>
-            {open} / {total}
-          </div>
-        );
-      },
-    },
-    {
-      title: "Base Elev",
-      dataIndex: "baseElevation",
-      key: "baseElevation",
-      width: 100,
-      render: (text, record) => (
-        <EditableCell
-          value={text}
-          resortId={record._id}
-          field="baseElevation"
-          placeholder="Base"
-        />
-      ),
-    },
-    { 
-      title: "Top Elev", 
-      dataIndex: "topElevation", 
-      key: "topElevation",
-      width: 100,
-      render: (text, record) => (
-        <EditableCell
-          value={text}
-          resortId={record._id}
-          field="topElevation"
-          placeholder="Top"
-        />
-      ),
-    },
-    {
-      title: "Lifts",
-      dataIndex: "lifts",
-      key: "lifts",
-      width: 80,
-      align: 'center',
-      render: (lifts) => {
-        const open = lifts?.open || 0;
-        const total = lifts?.total || 0;
-        return (
-          <div style={{ fontFamily: 'monospace', fontSize: 12 }}>
-            {open} / {total}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '10px', color: '#999', marginBottom: '1px' }}>Base</div>
+                <EditableCell
+                  value={record.baseElevation}
+                  resortId={record._id}
+                  field="baseElevation"
+                  placeholder="Base elev"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '10px', color: '#999', marginBottom: '1px' }}>Top</div>
+                <EditableCell
+                  value={record.topElevation}
+                  resortId={record._id}
+                  field="topElevation"
+                  placeholder="Top elev"
+                />
+              </div>
+            </div>
           </div>
         );
       },
@@ -728,68 +715,101 @@ const ResortTable = ({ data, setData }) => {
       title: "Ski Passes",
       dataIndex: "skiPasses",
       key: "skiPasses",
+      width: 160,
       render: (skiPasses) => {
         if (!skiPasses || skiPasses.length === 0) {
-          return <span style={{ color: '#999' }}>None</span>;
+          return (
+            <div style={{ 
+              padding: '8px', 
+              textAlign: 'center',
+              color: '#999',
+              fontSize: '12px'
+            }}>
+              No passes
+            </div>
+          );
         }
         return (
-          <div>
-            {skiPasses.slice(0, 2).map((pass, index) => (
-              <span
-                key={index}
-                style={{
-                  backgroundColor: pass?.color || '#1890ff',
-                  color: 'white',
-                  padding: '2px 6px',
-                  borderRadius: '3px',
-                  margin: '2px',
-                  display: 'inline-block',
-                  fontSize: '11px'
-                }}
-              >
-                {typeof pass === 'object' ? pass.name : pass}
-              </span>
-            ))}
-            {skiPasses.length > 2 && (
-              <span style={{ fontSize: '11px', color: '#666' }}>
-                +{skiPasses.length - 2} more
-              </span>
-            )}
+          <div style={{ padding: '4px 0' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {skiPasses.slice(0, 3).map((pass, index) => (
+                <Tag
+                  key={index}
+                  color={'blue'}
+                  style={{
+                    margin: 0,
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    maxWidth: '120px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title={typeof pass === 'object' ? pass.name : pass}
+                >
+                  {typeof pass === 'object' ? pass.name : pass}
+                </Tag>
+              ))}
+              {skiPasses.length > 3 && (
+                <Tag color="default" style={{ 
+                  margin: 0, 
+                  fontSize: '11px',
+                  textAlign: 'center'
+                }}>
+                  +{skiPasses.length - 3} more
+                </Tag>
+              )}
+            </div>
           </div>
         );
       },
     },
     {
-      title: "Heli & Snowcat",
-      key: "heliSnowcat",
-      width: 120,
+      title: "Equipment & Services",
+      key: "equipmentServices",
+      width: 160,
       render: (text, record) => {
         const helicopters = record.helicopters || 0;
         const snowCats = record.snowCats || 0;
-        const hasEquipment = helicopters > 0 || snowCats > 0;
+        const gondolas = record.gondolas || 0;
+        const hasEquipment = helicopters > 0 || snowCats > 0 || gondolas > 0;
         
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <Space>
-                {helicopters > 0 && (
-                  <Tooltip title={`${helicopters} helicopter${helicopters > 1 ? 's' : ''}`}>
-                    <Tag color="blue" size="small">
-                      🚁 {helicopters}
-                    </Tag>
-                  </Tooltip>
-                )}
-                {snowCats > 0 && (
-                  <Tooltip title={`${snowCats} snowcat${snowCats > 1 ? 's' : ''}`}>
-                    <Tag color="green" size="small">
-                      <CarOutlined /> {snowCats}
-                    </Tag>
-                  </Tooltip>
-                )}
-                {!hasEquipment && (
-                  <Tag color="default" size="small">None</Tag>
-                )}
-              </Space>
+          <div style={{ padding: '4px 0' }}>
+            <div style={{ marginBottom: '8px' }}>
+              {hasEquipment ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {helicopters > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span>🚁</span>
+                      <span style={{ fontSize: '12px' }}>{helicopters} Helicopter{helicopters > 1 ? 's' : ''}</span>
+                    </div>
+                  )}
+                  {snowCats > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <CarOutlined style={{ color: '#52c41a' }} />
+                      <span style={{ fontSize: '12px' }}>{snowCats} Snowcat{snowCats > 1 ? 's' : ''}</span>
+                    </div>
+                  )}
+                  {gondolas > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span>🚠</span>
+                      <span style={{ fontSize: '12px' }}>{gondolas} Gondola{gondolas > 1 ? 's' : ''}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ 
+                  color: '#999', 
+                  fontSize: '12px',
+                  fontStyle: 'italic',
+                  textAlign: 'center',
+                  padding: '8px 0'
+                }}>
+                  No equipment listed
+                </div>
+              )}
             </div>
             <Button
               type="link"
@@ -797,61 +817,77 @@ const ResortTable = ({ data, setData }) => {
               icon={<EditOutlined />}
               onClick={() => setEditingResort(record)}
               style={{ 
-                padding: '0 4px', 
+                padding: '2px 8px', 
                 height: 'auto', 
-                fontSize: '12px',
-                color: hasEquipment ? '#1890ff' : '#8c8c8c'
+                fontSize: '11px',
+                color: hasEquipment ? '#1890ff' : '#8c8c8c',
+                border: '1px solid #d9d9d9',
+                borderRadius: '4px',
+                width: '100%'
               }}
             >
-              {hasEquipment ? 'Edit Details' : 'Add Services'}
+              {hasEquipment ? 'Edit Equipment' : 'Add Equipment'}
             </Button>
           </div>
         );
       },
     },
     {
-      title: "Flag",
-      key: "flagged",
-      width: 80,
+      title: "Status & Actions",
+      key: "statusActions",
+      width: 140,
+      fixed: 'right',
       render: (text, record) => {
         const hasPendingChange = pendingChanges[record._id]?.flagged !== undefined;
         const currentFlagStatus = hasPendingChange ? pendingChanges[record._id].flagged : record.flagged;
         
         return (
-          <div style={{ position: 'relative' }}>
-            <Button
-              type="text"
-              icon={currentFlagStatus ? <FlagFilled style={{ color: '#ff4d4f' }} /> : <FlagOutlined />}
-              onClick={() => handleFlagToggle(record._id, currentFlagStatus)}
-              title={currentFlagStatus ? 'Unflag resort' : 'Flag resort'}
-              style={{
-                color: currentFlagStatus ? '#ff4d4f' : '#8c8c8c',
-                border: 'none',
-                padding: '4px 8px',
-                backgroundColor: hasPendingChange ? '#fff7e6' : 'transparent',
-                borderRadius: hasPendingChange ? '4px' : '0'
-              }}
-            />
-            {hasPendingChange && (
-              <Badge dot style={{ backgroundColor: '#faad14', position: 'absolute', top: 2, right: 2 }} />
-            )}
+          <div style={{ padding: '4px 0' }}>
+            <div style={{ marginBottom: '8px', textAlign: 'center' }}>
+              <Button
+                type="text"
+                icon={currentFlagStatus ? <FlagFilled style={{ color: '#ff4d4f' }} /> : <FlagOutlined />}
+                onClick={() => handleFlagToggle(record._id, currentFlagStatus)}
+                title={currentFlagStatus ? 'Unflag resort' : 'Flag resort'}
+                style={{
+                  color: currentFlagStatus ? '#ff4d4f' : '#8c8c8c',
+                  border: currentFlagStatus ? '1px solid #ff4d4f' : '1px solid #d9d9d9',
+                  padding: '4px 8px',
+                  backgroundColor: hasPendingChange ? '#fff7e6' : 'transparent',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}
+                size="small"
+              >
+                {currentFlagStatus ? 'Flagged' : 'Flag'}
+              </Button>
+              {hasPendingChange && (
+                <Badge dot style={{ backgroundColor: '#faad14', position: 'absolute', marginTop: '-8px', marginLeft: '-8px' }} />
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <Button 
+                type="primary" 
+                size="small" 
+                onClick={() => setEditingResort(record)}
+                style={{ fontSize: '11px' }}
+                block
+              >
+                Edit
+              </Button>
+              <Button 
+                danger 
+                size="small" 
+                onClick={() => handleDeleteResort(record._id)}
+                style={{ fontSize: '11px' }}
+                block
+              >
+                Delete
+              </Button>
+            </div>
           </div>
         );
       },
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      render: (text, record) => (
-        <>
-          <Button type="link" onClick={() => setEditingResort(record)}>
-            Edit
-          </Button>
-          <Button type="link" onClick={() => handleDeleteResort(record._id)}>
-            Delete
-          </Button>
-        </>
-      ),
     },
   ];
   const handleCloseModal = () => {
@@ -1283,10 +1319,8 @@ const ResortTable = ({ data, setData }) => {
         dataSource={filteredData}
         rowKey="_id"
         title={tableTitle}
-        sticky={{ 
-          offsetHeader: 64,
-          offsetScroll: 0,
-          getContainer: () => window
+        scroll={{ 
+          x: 1200
         }}
         pagination={{
           showSizeChanger: true,
@@ -1294,6 +1328,14 @@ const ResortTable = ({ data, setData }) => {
           showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} resorts`,
           pageSizeOptions: ['10', '20', '50', '100'],
           defaultPageSize: 20,
+          style: { 
+            padding: '16px 24px', 
+            background: '#fff'
+          }
+        }}
+        size="middle"
+        style={{
+          background: 'transparent'
         }}
       />
       
@@ -1410,8 +1452,6 @@ const ResortTable = ({ data, setData }) => {
           }}
         />
       </Modal>
-
-
     </>
   );
 };
