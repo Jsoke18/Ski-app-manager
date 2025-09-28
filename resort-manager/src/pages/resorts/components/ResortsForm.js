@@ -3,6 +3,7 @@ import { Form, Input, Button, Upload, Select, InputNumber, Card, Row, Col, Colla
 import { InboxOutlined, UploadOutlined, SaveOutlined, EnvironmentOutlined, InfoCircleOutlined, AreaChartOutlined, CameraOutlined, FlagOutlined } from "@ant-design/icons";
 import { uploadImageToGCS } from "../../../services/GoogleBucketService";
 import { fetchSkiPasses } from "../../../services/skiPassService";
+import { fetchHeliSkiingData, fetchCompleteHeliSnowcatData } from "../../../services/helicopterService";
 
 const { Dragger } = Upload;
 const { Option } = Select;
@@ -20,6 +21,8 @@ const ResortForm = ({
   const [loadingSkiPasses, setLoadingSkiPasses] = useState(false);
   const [imageFileList, setImageFileList] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [helicopterData, setHelicopterData] = useState(null);
+  const [loadingHelicopterData, setLoadingHelicopterData] = useState(false);
 
   useEffect(() => {
     loadSkiPasses();
@@ -37,68 +40,97 @@ const ResortForm = ({
     }
   };
 
-  useEffect(() => {
-    if (initialValues) {
-      form.setFieldsValue(initialValues);
-      setImageFileList([]); // Reset image file list
-    } else if (editingResort) {
-      // Exclude image-related fields from form initialization to avoid conflicts
-      const { imageUrl, image, ...resortDataWithoutImage } = editingResort;
-      
-      console.log("Initializing form for editing resort:", editingResort.name);
-      console.log("Existing imageUrl:", imageUrl);
-      console.log("Existing skiPasses:", editingResort.skiPasses);
-      
-      // Prepare coordinates string if location exists
-      let coordinatesString = "";
-      if (editingResort.location && editingResort.location.coordinates) {
-        const [longitude, latitude] = editingResort.location.coordinates;
-        coordinatesString = `${latitude}, ${longitude}`;
-      }
-      
-      form.setFieldsValue({
-        ...resortDataWithoutImage,
-        coordinates: coordinatesString,
-        locationType: editingResort.location?.type || "",
-        runs: {
-          open: editingResort.runs?.open || null,
-          total: editingResort.runs?.total || null,
-        },
-        lifts: {
-          open: editingResort.lifts?.open || null,
-          total: editingResort.lifts?.total || null,
-        },
-        skiPasses: editingResort.skiPasses?.map(pass => 
-          typeof pass === 'object' ? pass._id : pass
-        ) || [],
-        // Explicitly set image field to empty array to ensure clean state
-        image: [],
-        // Ensure all numeric fields are properly set
-        terrainParks: editingResort.terrainParks || null,
-        gondolas: editingResort.gondolas || null,
-        snowCats: editingResort.snowCats || null,
-        helicopters: editingResort.helicopters || null,
-        // Heli skiing and snowcat tour packages
-        heliSkiing: {
-          packages: editingResort.heliSkiing?.packages || []
-        },
-        snowcatTours: {
-          packages: editingResort.snowcatTours?.packages || []
-        },
-      });
-      setImageFileList([]); // Reset image file list for editing
-      
-      console.log("Form initialized with values:", {
-        skiPasses: editingResort.skiPasses?.map(pass => 
-          typeof pass === 'object' ? pass._id : pass
-        ) || [],
-        runs: editingResort.runs,
-        lifts: editingResort.lifts
-      });
-    } else {
-      form.resetFields();
-      setImageFileList([]); // Reset image file list
+  const loadHelicopterData = async (resortId) => {
+    if (!resortId) return;
+    try {
+      setLoadingHelicopterData(true);
+      const data = await fetchCompleteHeliSnowcatData(resortId);
+      setHelicopterData(data);
+      console.log('🚁 Loaded helicopter data for form:', data);
+      return data;
+    } catch (error) {
+      console.error('Error loading helicopter data:', error);
+      return null;
+    } finally {
+      setLoadingHelicopterData(false);
     }
+  };
+
+  useEffect(() => {
+    const initializeForm = async () => {
+      if (initialValues) {
+        form.setFieldsValue(initialValues);
+        setImageFileList([]); // Reset image file list
+      } else if (editingResort) {
+        // Load helicopter data for this resort if it has an ID
+        let heliData = null;
+        if (editingResort._id) {
+          heliData = await loadHelicopterData(editingResort._id);
+        }
+        
+        // Exclude image-related fields from form initialization to avoid conflicts
+        const { imageUrl, image, ...resortDataWithoutImage } = editingResort;
+        
+        console.log("Initializing form for editing resort:", editingResort.name);
+        console.log("Existing imageUrl:", imageUrl);
+        console.log("Existing skiPasses:", editingResort.skiPasses);
+        console.log("Loaded helicopter data:", heliData);
+        
+        // Prepare coordinates string if location exists
+        let coordinatesString = "";
+        if (editingResort.location && editingResort.location.coordinates) {
+          const [longitude, latitude] = editingResort.location.coordinates;
+          coordinatesString = `${latitude}, ${longitude}`;
+        }
+        
+        form.setFieldsValue({
+          ...resortDataWithoutImage,
+          coordinates: coordinatesString,
+          locationType: editingResort.location?.type || "",
+          runs: {
+            open: editingResort.runs?.open || null,
+            total: editingResort.runs?.total || null,
+          },
+          lifts: {
+            open: editingResort.lifts?.open || null,
+            total: editingResort.lifts?.total || null,
+          },
+          skiPasses: editingResort.skiPasses?.map(pass => 
+            typeof pass === 'object' ? pass._id : pass
+          ) || [],
+          // Explicitly set image field to empty array to ensure clean state
+          image: [],
+          // Ensure all numeric fields are properly set
+          terrainParks: editingResort.terrainParks || null,
+          gondolas: editingResort.gondolas || null,
+          snowCats: editingResort.snowCats || null,
+          helicopters: heliData?.helicopters?.count || editingResort.helicopters || null,
+          // Use loaded helicopter data if available, otherwise fall back to existing data
+          heliSkiing: {
+            packages: heliData?.helicopters?.heliSkiing?.packages || editingResort.heliSkiing?.packages || []
+          },
+          snowcatTours: {
+            packages: heliData?.snowcats?.snowcatTours?.packages || editingResort.snowcatTours?.packages || []
+          },
+        });
+        setImageFileList([]); // Reset image file list for editing
+        
+        console.log("Form initialized with values:", {
+          skiPasses: editingResort.skiPasses?.map(pass => 
+            typeof pass === 'object' ? pass._id : pass
+          ) || [],
+          runs: editingResort.runs,
+          lifts: editingResort.lifts,
+          helicopters: heliData?.helicopters?.count || editingResort.helicopters,
+          heliPackages: heliData?.helicopters?.heliSkiing?.packages || editingResort.heliSkiing?.packages
+        });
+      } else {
+        form.resetFields();
+        setImageFileList([]); // Reset image file list
+      }
+    };
+    
+    initializeForm();
   }, [editingResort, form, initialValues]);
 
   const onFinish = async (values) => {
@@ -474,7 +506,7 @@ const ResortForm = ({
             <Row gutter={[16, 8]}>
               <Col span={24}>
                 <Typography.Title level={5} style={{ margin: '16px 0 8px 0', color: '#1890ff' }}>
-                  🚁 Heli Skiing Packages
+                  🚁 Heli Skiing Packages {loadingHelicopterData && <span style={{ fontSize: '12px', color: '#666' }}>(Loading...)</span>}
                 </Typography.Title>
               </Col>
             </Row>

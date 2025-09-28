@@ -12,6 +12,7 @@ import {
   getResortFlagStatus,
   setResortFlagStatus,
 } from "../../../services/resortService";
+import { fetchHelicopterPackages, fetchHeliSkiingData } from "../../../services/helicopterService";
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -20,6 +21,7 @@ const ResortTable = ({ data, setData }) => {
   const [editingResort, setEditingResort] = useState(null);
   const [isAddingResort, setIsAddingResort] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [helicopterData, setHelicopterData] = useState({}); // Store helicopter packages by resort ID
   
 
   
@@ -153,6 +155,21 @@ const ResortTable = ({ data, setData }) => {
     setFlaggedFilter("");
     setLiftsFilter("");
     setRunsFilter("");
+  };
+
+  // Fetch helicopter packages for a specific resort
+  const fetchResortHelicopterData = async (resortId) => {
+    try {
+      const heliData = await fetchHeliSkiingData(resortId);
+      setHelicopterData(prev => ({
+        ...prev,
+        [resortId]: heliData
+      }));
+      return heliData;
+    } catch (error) {
+      console.error('Error fetching helicopter data for resort:', resortId, error);
+      return null;
+    }
   };
 
   // Copy to clipboard function
@@ -768,38 +785,71 @@ const ResortTable = ({ data, setData }) => {
     {
       title: "Equipment & Services",
       key: "equipmentServices",
-      width: 160,
+      width: 200,
       render: (text, record) => {
         const helicopters = record.helicopters || 0;
         const snowCats = record.snowCats || 0;
         const gondolas = record.gondolas || 0;
-        const hasEquipment = helicopters > 0 || snowCats > 0 || gondolas > 0;
+        const heliData = helicopterData[record._id];
+        const heliPackages = heliData?.packages || [];
+        const activeHeliPackages = heliPackages.filter(pkg => pkg.active === true);
         
         return (
           <div style={{ padding: '4px 0' }}>
             <div style={{ marginBottom: '8px' }}>
-              {hasEquipment ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {helicopters > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span>🚁</span>
-                      <span style={{ fontSize: '12px' }}>{helicopters} Helicopter{helicopters > 1 ? 's' : ''}</span>
+              {/* Basic Equipment Count */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                {helicopters > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>🚁</span>
+                    <span style={{ fontSize: '12px' }}>{helicopters} Helicopter{helicopters > 1 ? 's' : ''}</span>
+                  </div>
+                )}
+                {snowCats > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <CarOutlined style={{ color: '#52c41a' }} />
+                    <span style={{ fontSize: '12px' }}>{snowCats} Snowcat{snowCats > 1 ? 's' : ''}</span>
+                  </div>
+                )}
+                {gondolas > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>🚠</span>
+                    <span style={{ fontSize: '12px' }}>{gondolas} Gondola{gondolas > 1 ? 's' : ''}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Helicopter Packages */}
+              {activeHeliPackages.length > 0 && (
+                <div style={{ 
+                  borderTop: '1px solid #f0f0f0', 
+                  paddingTop: '6px',
+                  marginTop: '6px'
+                }}>
+                  <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 'bold' }}>
+                    🚁 Heli Packages ({activeHeliPackages.length})
+                  </div>
+                  {activeHeliPackages.slice(0, 2).map((pkg, index) => (
+                    <div key={pkg._id || index} style={{ 
+                      fontSize: '10px', 
+                      color: '#333',
+                      marginBottom: '2px',
+                      display: 'flex',
+                      justifyContent: 'space-between'
+                    }}>
+                      <span style={{ fontWeight: '500' }}>{pkg.name}</span>
+                      <span style={{ color: '#52c41a' }}>${pkg.price}</span>
                     </div>
-                  )}
-                  {snowCats > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <CarOutlined style={{ color: '#52c41a' }} />
-                      <span style={{ fontSize: '12px' }}>{snowCats} Snowcat{snowCats > 1 ? 's' : ''}</span>
-                    </div>
-                  )}
-                  {gondolas > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span>🚠</span>
-                      <span style={{ fontSize: '12px' }}>{gondolas} Gondola{gondolas > 1 ? 's' : ''}</span>
+                  ))}
+                  {activeHeliPackages.length > 2 && (
+                    <div style={{ fontSize: '10px', color: '#666', fontStyle: 'italic' }}>
+                      +{activeHeliPackages.length - 2} more packages
                     </div>
                   )}
                 </div>
-              ) : (
+              )}
+
+              {helicopters === 0 && snowCats === 0 && gondolas === 0 && activeHeliPackages.length === 0 && (
                 <div style={{ 
                   color: '#999', 
                   fontSize: '12px',
@@ -811,23 +861,41 @@ const ResortTable = ({ data, setData }) => {
                 </div>
               )}
             </div>
-            <Button
-              type="link"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => setEditingResort(record)}
-              style={{ 
-                padding: '2px 8px', 
-                height: 'auto', 
-                fontSize: '11px',
-                color: hasEquipment ? '#1890ff' : '#8c8c8c',
-                border: '1px solid #d9d9d9',
-                borderRadius: '4px',
-                width: '100%'
-              }}
-            >
-              {hasEquipment ? 'Edit Equipment' : 'Add Equipment'}
-            </Button>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <Button
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => setEditingResort(record)}
+                style={{ 
+                  padding: '2px 8px', 
+                  height: 'auto', 
+                  fontSize: '11px',
+                  color: '#1890ff',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '4px'
+                }}
+              >
+                Edit Equipment
+              </Button>
+              
+              {!helicopterData[record._id] && (
+                <Button
+                  type="text"
+                  size="small"
+                  onClick={() => fetchResortHelicopterData(record._id)}
+                  style={{ 
+                    padding: '2px 8px', 
+                    height: 'auto', 
+                    fontSize: '10px',
+                    color: '#666'
+                  }}
+                >
+                  Load Heli Data
+                </Button>
+              )}
+            </div>
           </div>
         );
       },
