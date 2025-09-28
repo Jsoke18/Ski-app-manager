@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Form, Input, Button, Upload, Select, InputNumber, Card, Row, Col, Collapse, Space, Affix, Switch, Typography } from "antd";
-import { InboxOutlined, UploadOutlined, SaveOutlined, EnvironmentOutlined, InfoCircleOutlined, AreaChartOutlined, CameraOutlined, FlagOutlined } from "@ant-design/icons";
+import { InboxOutlined, UploadOutlined, SaveOutlined, EnvironmentOutlined, InfoCircleOutlined, AreaChartOutlined, CameraOutlined, FlagOutlined, CheckOutlined } from "@ant-design/icons";
 import { uploadImageToGCS } from "../../../services/GoogleBucketService";
 import { fetchSkiPasses } from "../../../services/skiPassService";
 import { fetchHeliSkiingData, fetchCompleteHeliSnowcatData } from "../../../services/helicopterService";
@@ -12,6 +12,7 @@ const { Panel } = Collapse;
 const ResortForm = ({
   editingResort,
   onUpdateResort,
+  onSaveWithoutClosing, // New optional callback for saving without closing
   isAddingResort,
   initialValues,
 }) => {
@@ -133,11 +134,13 @@ const ResortForm = ({
     initializeForm();
   }, [editingResort, form, initialValues]);
 
-  const onFinish = async (values) => {
+  const onFinish = async (values, shouldClose = true) => {
     setIsSubmitting(true);
     try {
       console.log("=== FORM SUBMISSION DEBUG ===");
+      console.log("Should close modal:", shouldClose);
       console.log("Form values:", values);
+      console.log("🚁 HeliSkiing packages in form:", values.heliSkiing?.packages);
       console.log("Image field in values:", values.image);
       console.log("Image array length:", values.image?.length);
       console.log("First image file:", values.image?.[0]);
@@ -164,12 +167,59 @@ const ResortForm = ({
       formData.append("snowCats", values.snowCats || "");
       formData.append("helicopters", values.helicopters || "");
       
-      // Add heli skiing and snowcat tour data
-      if (values.heliSkiing) {
-        formData.append("heliSkiing", JSON.stringify(values.heliSkiing));
+      // Add heli skiing and snowcat tour data in the correct nested structure
+      if (values.heliSkiing && values.heliSkiing.packages && values.heliSkiing.packages.length > 0) {
+        console.log("🚁 Saving heliSkiing data:", values.heliSkiing);
+        // Send in nested format that matches API structure: helicopters.heliSkiing
+        const helicopterData = {
+          count: values.helicopters || 0,
+          heliSkiing: {
+            available: true,
+            packages: values.heliSkiing.packages
+          }
+        };
+        formData.append("helicopters", JSON.stringify(helicopterData));
+        console.log("🚁 Helicopter data being sent:", helicopterData);
+      } else if (values.helicopters) {
+        // Just send helicopter count if no packages
+        const helicopterData = {
+          count: values.helicopters || 0,
+          heliSkiing: {
+            available: false,
+            packages: []
+          }
+        };
+        formData.append("helicopters", JSON.stringify(helicopterData));
+        console.log("🚁 Helicopter count only:", helicopterData);
+      } else {
+        console.log("⚠️ No heliSkiing data in form values");
       }
-      if (values.snowcatTours) {
-        formData.append("snowcatTours", JSON.stringify(values.snowcatTours));
+      
+      if (values.snowcatTours && values.snowcatTours.packages && values.snowcatTours.packages.length > 0) {
+        console.log("🐱 Saving snowcatTours data:", values.snowcatTours);
+        // Send in nested format that matches API structure: snowcats.snowcatTours
+        const snowcatData = {
+          count: values.snowCats || 0,
+          snowcatTours: {
+            available: true,
+            packages: values.snowcatTours.packages
+          }
+        };
+        formData.append("snowcats", JSON.stringify(snowcatData));
+        console.log("🐱 Snowcat data being sent:", snowcatData);
+      } else if (values.snowCats) {
+        // Just send snowcat count if no packages
+        const snowcatData = {
+          count: values.snowCats || 0,
+          snowcatTours: {
+            available: false,
+            packages: []
+          }
+        };
+        formData.append("snowcats", JSON.stringify(snowcatData));
+        console.log("🐱 Snowcat count only:", snowcatData);
+      } else {
+        console.log("⚠️ No snowcatTours data in form values");
       }
       
       formData.append("mapboxVector", values.mapboxVectorUrl || "");
@@ -257,17 +307,40 @@ const ResortForm = ({
 
       if (editingResort) {
         formData.append("_id", editingResort._id);
-        await onUpdateResort(formData);
+        if (shouldClose) {
+          await onUpdateResort(formData);
+        } else if (onSaveWithoutClosing) {
+          await onSaveWithoutClosing(formData);
+        } else {
+          await onUpdateResort(formData);
+        }
       } else {
         await onUpdateResort(formData);
       }
 
-      form.resetFields();
-      setGeoJSONFile(null);
-      setImageFileList([]);
+      // Only reset form if we're closing the modal
+      if (shouldClose) {
+        form.resetFields();
+        setGeoJSONFile(null);
+        setImageFileList([]);
+      }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Handle save without closing modal
+  const handleSaveOnly = () => {
+    form.validateFields().then(values => {
+      onFinish(values, false);
+    }).catch(info => {
+      console.log('Validate Failed:', info);
+    });
+  };
+
+  // Handle save and close modal
+  const handleSaveAndClose = () => {
+    form.submit();
   };
 
   const geoJSONProps = {
@@ -287,7 +360,7 @@ const ResortForm = ({
     <div style={{ position: 'relative', paddingBottom: 80 }}>
       <Form
         form={form}
-        onFinish={onFinish}
+        onFinish={(values) => onFinish(values, true)}
         layout="vertical"
         scrollToFirstError
       >
@@ -884,23 +957,43 @@ const ResortForm = ({
           <div style={{ color: '#666', fontSize: '14px' }}>
             {editingResort ? 'Editing' : 'Adding'} resort
           </div>
-          <Button 
-            type="primary" 
-            size="large"
-            icon={<SaveOutlined />}
-            loading={isSubmitting}
-            onClick={() => form.submit()}
-            style={{
-              borderRadius: '8px',
-              height: '40px',
-              paddingLeft: '24px',
-              paddingRight: '24px',
-              fontSize: '16px',
-              fontWeight: 600
-            }}
-          >
-            {editingResort ? "Update Resort" : "Add Resort"}
-          </Button>
+          <Space>
+            {editingResort && (
+              <Button 
+                size="large"
+                icon={<CheckOutlined />}
+                loading={isSubmitting}
+                onClick={handleSaveOnly}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  paddingLeft: '20px',
+                  paddingRight: '20px',
+                  fontSize: '14px',
+                  fontWeight: 500
+                }}
+              >
+                Save Changes
+              </Button>
+            )}
+            <Button 
+              type="primary" 
+              size="large"
+              icon={<SaveOutlined />}
+              loading={isSubmitting}
+              onClick={handleSaveAndClose}
+              style={{
+                borderRadius: '8px',
+                height: '40px',
+                paddingLeft: '24px',
+                paddingRight: '24px',
+                fontSize: '16px',
+                fontWeight: 600
+              }}
+            >
+              {editingResort ? "Update & Close" : "Add Resort"}
+            </Button>
+          </Space>
         </div>
       </Affix>
     </div>

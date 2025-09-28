@@ -5,6 +5,7 @@ import ResortTable from "./components/ResortsTable";
 import {
   fetchResorts,
   addResort,
+  updateResort,
   deleteResort,
 } from "../../services/resortService";
 
@@ -111,6 +112,20 @@ const ResortsPage = () => {
                 );
                 setResorts(updatedResorts);
                 setEditingResort(null);
+              }}
+              onSaveWithoutClosing={async (formData) => {
+                try {
+                  const updatedResort = await updateResort(formData);
+                  const updatedResorts = resorts.map((resort) =>
+                    resort._id === updatedResort._id ? updatedResort : resort
+                  );
+                  setResorts(updatedResorts);
+                  message.success('Resort saved successfully!');
+                  // Note: don't call setEditingResort(null) to keep modal open
+                } catch (error) {
+                  console.error('Error saving resort:', error);
+                  message.error('Failed to save resort');
+                }
               }}
             />
           </div>
