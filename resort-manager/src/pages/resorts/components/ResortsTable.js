@@ -22,6 +22,7 @@ const ResortTable = ({ data, setData }) => {
   const [isAddingResort, setIsAddingResort] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [helicopterData, setHelicopterData] = useState({}); // Store helicopter packages by resort ID
+  const [snowcatData, setSnowcatData] = useState({}); // Store snowcat packages by resort ID
   
 
   
@@ -41,6 +42,8 @@ const ResortTable = ({ data, setData }) => {
   const [skiPassFilter, setSkiPassFilter] = useState(""); // "all", "with", "without"
   const [websiteFilter, setWebsiteFilter] = useState(""); // "all", "with", "without"
   const [flaggedFilter, setFlaggedFilter] = useState(""); // "all", "flagged", "unflagged"
+  const [heliFilter, setHeliFilter] = useState(""); // "all", "with", "without"
+  const [snowcatFilter, setSnowcatFilter] = useState(""); // "all", "with", "without"
   
   // New data quality filters
   const [liftsFilter, setLiftsFilter] = useState(""); // "all", "minimal", "complete"
@@ -139,11 +142,23 @@ const ResortTable = ({ data, setData }) => {
         (runsFilter === "minimal" && totalRuns <= 1) ||
         (runsFilter === "complete" && totalRuns > 1);
 
+      // Heli filter
+      const helicopters = resort.helicopters || 0;
+      const heliMatch = !heliFilter ||
+        (heliFilter === "with" && helicopters > 0) ||
+        (heliFilter === "without" && helicopters === 0);
+
+      // Snowcat filter
+      const snowcats = resort.snowCats || 0;
+      const snowcatMatch = !snowcatFilter ||
+        (snowcatFilter === "with" && snowcats > 0) ||
+        (snowcatFilter === "without" && snowcats === 0);
+
       return searchMatch && countryMatch && provinceMatch && skiPassMatch && websiteMatch && 
-             flaggedMatch && liftsMatch && runsMatch;
+             flaggedMatch && liftsMatch && runsMatch && heliMatch && snowcatMatch;
     });
   }, [dataWithPendingChanges, searchText, countryFilter, provinceFilter, skiPassFilter, websiteFilter, 
-      flaggedFilter, liftsFilter, runsFilter]);
+      flaggedFilter, liftsFilter, runsFilter, heliFilter, snowcatFilter]);
 
   // Clear all filters
   const clearAllFilters = () => {
@@ -155,6 +170,8 @@ const ResortTable = ({ data, setData }) => {
     setFlaggedFilter("");
     setLiftsFilter("");
     setRunsFilter("");
+    setHeliFilter("");
+    setSnowcatFilter("");
   };
 
   // Fetch helicopter packages for a specific resort
@@ -168,6 +185,23 @@ const ResortTable = ({ data, setData }) => {
       return heliData;
     } catch (error) {
       console.error('Error fetching helicopter data for resort:', resortId, error);
+      return null;
+    }
+  };
+
+  // Fetch snowcat data for a specific resort
+  const fetchResortSnowcatData = async (resortId) => {
+    try {
+      const response = await fetch(`http://localhost:3000/resorts/${resortId}/heli-snowcat`);
+      const data = await response.json();
+      const snowcatInfo = data?.snowcats?.snowcatTours || null;
+      setSnowcatData(prev => ({
+        ...prev,
+        [resortId]: snowcatInfo
+      }));
+      return snowcatInfo;
+    } catch (error) {
+      console.error('Error fetching snowcat data for resort:', resortId, error);
       return null;
     }
   };
@@ -540,7 +574,8 @@ const ResortTable = ({ data, setData }) => {
               </Tag>
             </div>
           </div>
-          {record.location && record.location.coordinates && (
+          {record.location && record.location.coordinates && 
+           record.location.coordinates[0] != null && record.location.coordinates[1] != null && (
             <div style={{ 
               fontSize: '11px', 
               fontFamily: 'monospace',
@@ -794,6 +829,10 @@ const ResortTable = ({ data, setData }) => {
         const heliPackages = heliData?.packages || [];
         const activeHeliPackages = heliPackages.filter(pkg => pkg.active === true);
         
+        const snowcatInfo = snowcatData[record._id];
+        const snowcatPackages = snowcatInfo?.packages || [];
+        const activeSnowcatPackages = snowcatPackages.filter(pkg => pkg.active === true);
+        
         return (
           <div style={{ padding: '4px 0' }}>
             <div style={{ marginBottom: '8px' }}>
@@ -849,7 +888,38 @@ const ResortTable = ({ data, setData }) => {
                 </div>
               )}
 
-              {helicopters === 0 && snowCats === 0 && gondolas === 0 && activeHeliPackages.length === 0 && (
+              {/* Snowcat Packages */}
+              {activeSnowcatPackages.length > 0 && (
+                <div style={{ 
+                  borderTop: '1px solid #f0f0f0', 
+                  paddingTop: '6px',
+                  marginTop: '6px'
+                }}>
+                  <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 'bold' }}>
+                    🚜 Snowcat Packages ({activeSnowcatPackages.length})
+                  </div>
+                  {activeSnowcatPackages.slice(0, 2).map((pkg, index) => (
+                    <div key={pkg._id || index} style={{ 
+                      fontSize: '10px', 
+                      color: '#333',
+                      marginBottom: '2px',
+                      display: 'flex',
+                      justifyContent: 'space-between'
+                    }}>
+                      <span style={{ fontWeight: '500' }}>{pkg.name}</span>
+                      <span style={{ color: '#52c41a' }}>${pkg.price}</span>
+                    </div>
+                  ))}
+                  {activeSnowcatPackages.length > 2 && (
+                    <div style={{ fontSize: '10px', color: '#666', fontStyle: 'italic' }}>
+                      +{activeSnowcatPackages.length - 2} more packages
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {helicopters === 0 && snowCats === 0 && gondolas === 0 && 
+               activeHeliPackages.length === 0 && activeSnowcatPackages.length === 0 && (
                 <div style={{ 
                   color: '#999', 
                   fontSize: '12px',
@@ -880,7 +950,7 @@ const ResortTable = ({ data, setData }) => {
                 Edit Equipment
               </Button>
               
-              {!helicopterData[record._id] && (
+              {!helicopterData[record._id] && helicopters > 0 && (
                 <Button
                   type="text"
                   size="small"
@@ -893,6 +963,22 @@ const ResortTable = ({ data, setData }) => {
                   }}
                 >
                   Load Heli Data
+                </Button>
+              )}
+
+              {!snowcatData[record._id] && snowCats > 0 && (
+                <Button
+                  type="text"
+                  size="small"
+                  onClick={() => fetchResortSnowcatData(record._id)}
+                  style={{ 
+                    padding: '2px 8px', 
+                    height: 'auto', 
+                    fontSize: '10px',
+                    color: '#666'
+                  }}
+                >
+                  Load Snowcat Data
                 </Button>
               )}
             </div>
@@ -1295,6 +1381,80 @@ const ResortTable = ({ data, setData }) => {
 
           <Divider type="vertical" style={{ height: 50 }} />
 
+          {/* Helicopter toggles */}
+          <Col>
+            <Space direction="vertical" size={6}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#666' }}>🚁 Heli-Skiing</span>
+              <Space size={12}>
+                <Button
+                  size="small"
+                  type={heliFilter === "with" ? "primary" : "default"}
+                  icon={heliFilter === "with" ? <CheckOutlined /> : null}
+                  onClick={() => setHeliFilter(heliFilter === "with" ? "" : "with")}
+                  style={{ 
+                    borderRadius: 6,
+                    backgroundColor: heliFilter === "with" ? "#722ed1" : undefined,
+                    borderColor: heliFilter === "with" ? "#722ed1" : undefined
+                  }}
+                >
+                  Has Heli
+                </Button>
+                <Button
+                  size="small"
+                  type={heliFilter === "without" ? "primary" : "default"}
+                  icon={heliFilter === "without" ? <CloseOutlined /> : null}
+                  onClick={() => setHeliFilter(heliFilter === "without" ? "" : "without")}
+                  style={{ 
+                    borderRadius: 6,
+                    backgroundColor: heliFilter === "without" ? "#d9d9d9" : undefined,
+                    borderColor: heliFilter === "without" ? "#d9d9d9" : undefined
+                  }}
+                >
+                  No Heli
+                </Button>
+              </Space>
+            </Space>
+          </Col>
+
+          <Divider type="vertical" style={{ height: 50 }} />
+
+          {/* Snowcat toggles */}
+          <Col>
+            <Space direction="vertical" size={6}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#666' }}>🚜 Snowcat Tours</span>
+              <Space size={12}>
+                <Button
+                  size="small"
+                  type={snowcatFilter === "with" ? "primary" : "default"}
+                  icon={snowcatFilter === "with" ? <CheckOutlined /> : null}
+                  onClick={() => setSnowcatFilter(snowcatFilter === "with" ? "" : "with")}
+                  style={{ 
+                    borderRadius: 6,
+                    backgroundColor: snowcatFilter === "with" ? "#52c41a" : undefined,
+                    borderColor: snowcatFilter === "with" ? "#52c41a" : undefined
+                  }}
+                >
+                  Has Snowcat
+                </Button>
+                <Button
+                  size="small"
+                  type={snowcatFilter === "without" ? "primary" : "default"}
+                  icon={snowcatFilter === "without" ? <CloseOutlined /> : null}
+                  onClick={() => setSnowcatFilter(snowcatFilter === "without" ? "" : "without")}
+                  style={{ 
+                    borderRadius: 6,
+                    backgroundColor: snowcatFilter === "without" ? "#d9d9d9" : undefined,
+                    borderColor: snowcatFilter === "without" ? "#d9d9d9" : undefined
+                  }}
+                >
+                  No Snowcat
+                </Button>
+              </Space>
+            </Space>
+          </Col>
+
+          <Divider type="vertical" style={{ height: 50 }} />
+
           {/* Data Quality Filters */}
           <Col>
             <Space direction="vertical" size={6}>
@@ -1338,7 +1498,7 @@ const ResortTable = ({ data, setData }) => {
                 <strong style={{ color: '#1890ff' }}>{filteredData.length}</strong> of <strong>{data.length}</strong> resorts
               </div>
               {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter || 
-                flaggedFilter || liftsFilter || runsFilter) && (
+                flaggedFilter || liftsFilter || runsFilter || heliFilter || snowcatFilter) && (
                 <Button 
                   size="small"
                   icon={<ClearOutlined />}
