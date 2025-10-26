@@ -39,11 +39,12 @@ const ResortTable = ({ data, setData }) => {
   const [searchText, setSearchText] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
-  const [skiPassFilter, setSkiPassFilter] = useState(""); // "all", "with", "without"
+  const [skiPassFilter, setSkiPassFilter] = useState(""); // specific pass name filter
   const [websiteFilter, setWebsiteFilter] = useState(""); // "all", "with", "without"
   const [flaggedFilter, setFlaggedFilter] = useState(""); // "all", "flagged", "unflagged"
   const [heliFilter, setHeliFilter] = useState(""); // "all", "with", "without"
   const [snowcatFilter, setSnowcatFilter] = useState(""); // "all", "with", "without"
+  const [passQualityFilter, setPassQualityFilter] = useState(""); // "all", "missing-names", "good-quality"
   
   // New data quality filters
   const [liftsFilter, setLiftsFilter] = useState(""); // "all", "minimal", "complete"
@@ -87,6 +88,30 @@ const ResortTable = ({ data, setData }) => {
       }));
   }, [data, countryFilter]);
 
+  // Extract unique ski pass names with counts
+  const uniqueSkiPasses = useMemo(() => {
+    const passCount = {};
+    
+    data.forEach(resort => {
+      if (resort.skiPasses && resort.skiPasses.length > 0) {
+        resort.skiPasses.forEach(pass => {
+          const passName = typeof pass === 'object' ? pass.name : pass;
+          if (passName && passName.trim() !== '') {
+            const cleanName = passName.trim();
+            passCount[cleanName] = (passCount[cleanName] || 0) + 1;
+          }
+        });
+      }
+    });
+    
+    return Object.keys(passCount)
+      .sort((a, b) => passCount[b] - passCount[a]) // Sort by count descending
+      .map(passName => ({
+        name: passName,
+        count: passCount[passName]
+      }));
+  }, [data]);
+
   // Apply pending changes to data for display
   const dataWithPendingChanges = useMemo(() => {
     return data.map(resort => {
@@ -115,10 +140,12 @@ const ResortTable = ({ data, setData }) => {
       // Province filter
       const provinceMatch = !provinceFilter || resort.province === provinceFilter;
 
-      // Ski pass filter
+      // Ski pass filter - filter by specific pass name
       const skiPassMatch = !skiPassFilter || 
-        (skiPassFilter === "with" && resort.skiPasses && resort.skiPasses.length > 0) ||
-        (skiPassFilter === "without" && (!resort.skiPasses || resort.skiPasses.length === 0));
+        (resort.skiPasses && resort.skiPasses.some(pass => {
+          const passName = typeof pass === 'object' ? pass.name : pass;
+          return passName && passName.toLowerCase().includes(skiPassFilter.toLowerCase());
+        }));
 
       // Website filter
       const websiteMatch = !websiteFilter ||
@@ -154,11 +181,22 @@ const ResortTable = ({ data, setData }) => {
         (snowcatFilter === "with" && snowcats > 0) ||
         (snowcatFilter === "without" && snowcats === 0);
 
+      // Pass quality filter
+      const passCount = resort.skiPasses ? resort.skiPasses.length : 0;
+      const hasPassQualityIssues = resort.skiPasses && resort.skiPasses.some(pass => 
+        !pass || 
+        (typeof pass === 'object' && (!pass.name || pass.name.trim() === '')) ||
+        (typeof pass === 'string' && pass.trim() === '')
+      );
+      const passQualityMatch = !passQualityFilter ||
+        (passQualityFilter === "missing-names" && hasPassQualityIssues) ||
+        (passQualityFilter === "good-quality" && !hasPassQualityIssues && passCount > 0);
+
       return searchMatch && countryMatch && provinceMatch && skiPassMatch && websiteMatch && 
-             flaggedMatch && liftsMatch && runsMatch && heliMatch && snowcatMatch;
+             flaggedMatch && liftsMatch && runsMatch && heliMatch && snowcatMatch && passQualityMatch;
     });
   }, [dataWithPendingChanges, searchText, countryFilter, provinceFilter, skiPassFilter, websiteFilter, 
-      flaggedFilter, liftsFilter, runsFilter, heliFilter, snowcatFilter]);
+      flaggedFilter, liftsFilter, runsFilter, heliFilter, snowcatFilter, passQualityFilter]);
 
   // Clear all filters
   const clearAllFilters = () => {
@@ -172,6 +210,7 @@ const ResortTable = ({ data, setData }) => {
     setRunsFilter("");
     setHeliFilter("");
     setSnowcatFilter("");
+    setPassQualityFilter("");
   };
 
   // Fetch helicopter packages for a specific resort
@@ -1270,38 +1309,28 @@ const ResortTable = ({ data, setData }) => {
 
           <Divider type="vertical" style={{ height: 50 }} />
 
-          {/* Feature toggles */}
+          {/* Ski Pass Filter */}
           <Col>
             <Space direction="vertical" size={6}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#666' }}>🎿 Ski Passes</span>
-              <Space size={12}>
-                <Button
-                  size="small"
-                  type={skiPassFilter === "with" ? "primary" : "default"}
-                  icon={skiPassFilter === "with" ? <CheckOutlined /> : null}
-                  onClick={() => setSkiPassFilter(skiPassFilter === "with" ? "" : "with")}
-                  style={{ 
-                    borderRadius: 6,
-                    backgroundColor: skiPassFilter === "with" ? "#52c41a" : undefined,
-                    borderColor: skiPassFilter === "with" ? "#52c41a" : undefined
-                  }}
-                >
-                  Has Passes
-                </Button>
-                <Button
-                  size="small"
-                  type={skiPassFilter === "without" ? "primary" : "default"}
-                  icon={skiPassFilter === "without" ? <CloseOutlined /> : null}
-                  onClick={() => setSkiPassFilter(skiPassFilter === "without" ? "" : "without")}
-                  style={{ 
-                    borderRadius: 6,
-                    backgroundColor: skiPassFilter === "without" ? "#ff4d4f" : undefined,
-                    borderColor: skiPassFilter === "without" ? "#ff4d4f" : undefined
-                  }}
-                >
-                  No Passes
-                </Button>
-              </Space>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#666' }}>🎿 Ski Pass Network</span>
+              <Select
+                placeholder="🎿 Filter by Pass"
+                value={skiPassFilter}
+                onChange={setSkiPassFilter}
+                style={{ width: 200 }}
+                size="default"
+                allowClear
+                showSearch
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {uniqueSkiPasses.map(pass => (
+                  <Option key={pass.name} value={pass.name}>
+                    {pass.name} ({pass.count})
+                  </Option>
+                ))}
+              </Select>
             </Space>
           </Col>
 
@@ -1498,7 +1527,7 @@ const ResortTable = ({ data, setData }) => {
                 <strong style={{ color: '#1890ff' }}>{filteredData.length}</strong> of <strong>{data.length}</strong> resorts
               </div>
               {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter || 
-                flaggedFilter || liftsFilter || runsFilter || heliFilter || snowcatFilter) && (
+                flaggedFilter || liftsFilter || runsFilter || heliFilter || snowcatFilter || passQualityFilter) && (
                 <Button 
                   size="small"
                   icon={<ClearOutlined />}
@@ -1515,7 +1544,7 @@ const ResortTable = ({ data, setData }) => {
 
         {/* Active filters summary */}
         {(searchText || countryFilter || provinceFilter || skiPassFilter || websiteFilter ||
-          flaggedFilter || liftsFilter || runsFilter) && (
+          flaggedFilter || liftsFilter || runsFilter || heliFilter || snowcatFilter || passQualityFilter) && (
           <Row style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
             <Col span={24}>
               <Space wrap size={6}>
@@ -1523,8 +1552,9 @@ const ResortTable = ({ data, setData }) => {
                 {searchText && <Tag size="small" color="blue" closable onClose={() => setSearchText("")}>Search: "{searchText}"</Tag>}
                 {countryFilter && <Tag size="small" color="geekblue" closable onClose={() => setCountryFilter("")}>Country: {countryFilter}</Tag>}
                 {provinceFilter && <Tag size="small" color="cyan" closable onClose={() => setProvinceFilter("")}>Province: {provinceFilter}</Tag>}
-                {skiPassFilter === "with" && <Tag size="small" color="green" closable onClose={() => setSkiPassFilter("")}>Has Ski Passes</Tag>}
-                {skiPassFilter === "without" && <Tag size="small" color="red" closable onClose={() => setSkiPassFilter("")}>No Ski Passes</Tag>}
+                {skiPassFilter && <Tag size="small" color="blue" closable onClose={() => setSkiPassFilter("")}>Pass: {skiPassFilter}</Tag>}
+                {passQualityFilter === "missing-names" && <Tag size="small" color="red" closable onClose={() => setPassQualityFilter("")}>⚠️ Passes Need Review</Tag>}
+                {passQualityFilter === "good-quality" && <Tag size="small" color="green" closable onClose={() => setPassQualityFilter("")}>✅ Clean Pass Data</Tag>}
                 {websiteFilter === "with" && <Tag size="small" color="blue" closable onClose={() => setWebsiteFilter("")}>Has Website</Tag>}
                 {websiteFilter === "without" && <Tag size="small" color="red" closable onClose={() => setWebsiteFilter("")}>No Website</Tag>}
                 {flaggedFilter === "flagged" && <Tag size="small" color="red" closable onClose={() => setFlaggedFilter("")}>Flagged</Tag>}
